@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+@import "tailwindcss";
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f4f7f9;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #a5c0e5;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #317cd7;
+}
+
+.status-Applied { background-color: #f7fbff; }
+.status-Screening { background-color: #fbf9ff; }
+.status-Interview { background-color: #fffdf5; }
+.status-Offer { background-color: #f7fffb; }
+.status-Rejected { background-color: #fff7f7; }
+.status-Closed { background-color: #f8fafc; }
+.status-Custom { background-color: #f5fcff; }
+
+.status-Applied-bg { background-color: #bfdbfe; color: #1e40af; border-color: #60a5fa; }
+.status-Screening-bg { background-color: #ddd6fe; color: #5b21b6; border-color: #a78bfa; }
+.status-Interview-bg { background-color: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.status-Offer-bg { background-color: #a7f3d0; color: #065f46; border-color: #34d399; }
+.status-Rejected-bg { background-color: #fecaca; color: #991b1b; border-color: #f87171; }
+.status-Closed-bg { background-color: #e5e7eb; color: #4b5563; border-color: #9ca3af; }
+.status-Custom-bg { background-color: #bae6fd; color: #075985; border-color: #38bdf8; }
+
+.platform-linkedin { background-color: #e0f2fe; color: #0369a1; }
+.platform-company { background-color: #fef3c7; color: #92400e; }
+.platform-email { background-color: #dbeafe; color: #1e40af; }
+.platform-whatsapp { background-color: #dcfce7; color: #166534; }
+.platform-other { background-color: #f3e8ff; color: #6b21a8; }
+
+.job-row { border-bottom: 1px solid #e5e7eb; }
+.job-row:hover { background-color: #f0f4f8; }
+
+@media (max-width: 767px) {
+  .job-row {
+    border-radius: 8px !important;
+    margin-bottom: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #3b82f6;
+  }
+}
