@@ -2,11 +2,11 @@
   <div :data-platform-dropdown="formId">
     <label class="block text-sm font-medium text-gray-700 mb-2">Application Platforms <span class="text-red-500">*</span></label>
     
-    <div class="mb-3 min-h-[2rem]">
+    <div class="mb-3 min-h-8">
       <p v-if="modelValue.length === 0" class="text-sm text-gray-500 italic">No platforms selected</p>
       <div v-else class="flex flex-wrap gap-2">
         <div v-for="platformKey in modelValue" :key="platformKey"
-             :class="['inline-flex items-center px-3.5 py-2 rounded-full text-sm font-semibold transition-all hover:translate-y-[-1px] hover:shadow-md', getPlatformClass(platformKey)]">
+             :class="['inline-flex items-center px-3.5 py-2 rounded-full text-sm font-semibold transition-all hover:translate-y-px] hover:shadow-md', getPlatformClass(platformKey)]">
           <span>{{ platformStore.platforms[platformKey] }}</span>
           <button type="button" @click="removePlatform(platformKey)"
                   class="ml-2 w-4 h-4 flex items-center justify-center rounded-full hover:bg-black hover:bg-opacity-20 transition-all hover:scale-110">

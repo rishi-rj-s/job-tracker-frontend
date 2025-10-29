@@ -11,7 +11,7 @@
           </span>
           <span v-else class="text-sm text-gray-500 italic">Select a status</span>
         </div>
-        <ChevronDown class="h-5 w-5 text-gray-400 flex-shrink-0 ml-2" />
+        <ChevronDown class="h-5 w-5 text-gray-400 shrink-0 ml-2" />
       </button>
 
       <div v-if="isOpen" class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-80 overflow-hidden flex flex-col">

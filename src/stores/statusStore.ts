@@ -4,7 +4,7 @@ import type { Status } from '../types'
 import { supabase } from '../lib/supabase'
 
 export const useStatusStore = defineStore('status', () => {
-  const statuses = ref<Record<string, string>>({
+  const statuses = ref<Record>({
     'Applied': 'Applied',
     'Screening': 'Screening/Review',
     'Interview': 'Interview Scheduled',
@@ -13,23 +13,34 @@ export const useStatusStore = defineStore('status', () => {
     'Closed': 'No Follow-up Required'
   })
 
-  const pendingStatuses = ref<Status[]>([])
+  const pendingStatuses = ref([])
 
   const fixedStatuses = ['Applied', 'Screening', 'Interview', 'Offer', 'Rejected', 'Closed']
 
   async function fetchStatuses() {
     try {
-      const { data, error } = await supabase.functions.invoke('statuses', {
-        method: 'GET'
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/statuses`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      if (!response.ok) throw new Error('Failed to fetch statuses')
+
+      const data = await response.json()
+
+      // Clear and rebuild statuses
+      statuses.value = {}
+      data.forEach((s: Status) => {
+        statuses.value[s.key] = s.name
       })
-
-      if (error) throw error
-
-      if (data) {
-        data.forEach((s: Status) => {
-          statuses.value[s.key] = s.name
-        })
-      }
     } catch (err) {
       console.error('Error fetching statuses:', err)
     }
