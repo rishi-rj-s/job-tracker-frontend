@@ -30,3 +30,31 @@ export interface PendingSync {
   updates: { id: string; tempId: string; data: Partial<Job> }[]
   deletes: { id: string }[]
 }
+
+// Export format types
+export type ExportFormat = 'csv' | 'xlsx' | 'pdf' | 'json'
+
+// API Response types
+export interface ExportResponse {
+  success: boolean
+  message?: string
+}
+
+export interface AuthResponse {
+  success: boolean
+  message: string
+  autoLogin?: boolean
+  requiresVerification?: boolean
+}
+
+export interface PaginationInfo {
+  currentPage: number
+  totalPages: number
+  totalItems: number
+  pageSize: number
+}
+
+export interface JobsResponse {
+  jobs: Job[]
+  pagination: PaginationInfo
+}

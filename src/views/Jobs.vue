@@ -27,8 +27,20 @@
       </div>
     </div>
 
-    <!-- Add Job Form -->
-    <JobForm />
+    <!-- Add Job Form Toggle Button & Form -->
+    <div class="space-y-4">
+      <button
+        @click="showForm = !showForm"
+        class="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-md"
+      >
+        <Plus class="h-5 w-5" />
+        {{ showForm ? 'Hide Form' : 'Add New Application' }}
+      </button>
+
+      <transition name="slide-fade">
+        <JobForm v-if="showForm" @submitted="showForm = false" />
+      </transition>
+    </div>
 
     <!-- Edit Modal -->
     <EditModal />
@@ -42,60 +54,39 @@
       </div>
     </div>
 
+    <!-- Search & Filter Section -->
+    <SearchBar />
+
     <!-- Jobs List -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <JobList />
     </div>
 
     <!-- Pagination -->
-    <div v-if="jobStore.totalPages > 1" class="flex justify-center items-center gap-2">
-      <button 
-        @click="changePage(jobStore.currentPage - 1)"
-        :disabled="jobStore.currentPage === 1"
-        class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-        Previous
-      </button>
-      
-      <div class="flex items-center gap-2">
-        <button 
-          v-for="page in visiblePages" 
-          :key="page"
-          @click="changePage(page)"
-          :class="[
-            'px-4 py-2 rounded-lg transition-all',
-            page === jobStore.currentPage
-              ? 'bg-indigo-600 text-white font-semibold'
-              : 'bg-white border border-gray-300 hover:bg-gray-50'
-          ]">
-          {{ page }}
-        </button>
-      </div>
-
-      <button 
-        @click="changePage(jobStore.currentPage + 1)"
-        :disabled="jobStore.currentPage === jobStore.totalPages"
-        class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-        Next
-      </button>
-    </div>
+    <Pagination v-if="jobStore.totalPages > 1" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { RefreshCw } from 'lucide-vue-next'
-import { useJobStore } from '../stores/jobStore'
-import { useSyncStore } from '../stores/syncStore'
-import { useStatusStore } from '../stores/statusStore'
-import { usePlatformStore } from '../stores/platformStore'
-import JobForm from '../components/JobForm.vue'
-import JobList from '../components/JobList.vue'
-import EditModal from '../components/EditModal.vue'
+import { ref, computed, onMounted } from 'vue'
+import { RefreshCw, Plus } from 'lucide-vue-next'
+import { useJobStore } from '@stores/jobStore'
+import { useSyncStore } from '@stores/syncStore'
+import { useStatusStore } from '@stores/statusStore'
+import { usePlatformStore } from '@stores/platformStore'
+import JobForm from '@components/dashboard/jobs/JobForm.vue'
+import JobList from '@components/dashboard/jobs/JobList.vue'
+import EditModal from '@components/dashboard/jobs/EditModal.vue'
+import Pagination from '@components/common/Pagination.vue'
+import SearchBar from '@components/dashboard/jobs/SearchBar.vue'
+
 
 const jobStore = useJobStore()
 const syncStore = useSyncStore()
 const statusStore = useStatusStore()
 const platformStore = usePlatformStore()
+
+const showForm = ref(false)
 
 const statusStats = computed(() => [
   { label: 'Total', count: jobStore.jobs.length },
@@ -104,38 +95,8 @@ const statusStats = computed(() => [
   { label: 'Offers', count: jobStore.jobs.filter(j => j.status === 'Offer').length }
 ])
 
-const visiblePages = computed(() => {
-  const current = jobStore.currentPage
-  const total = jobStore.totalPages
-  const pages: number[] = []
-  
-  // Always show first page
-  pages.push(1)
-  
-  // Show pages around current page
-  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
-    if (!pages.includes(i)) {
-      pages.push(i)
-    }
-  }
-  
-  // Always show last page
-  if (total > 1 && !pages.includes(total)) {
-    pages.push(total)
-  }
-  
-  return pages.sort((a, b) => a - b)
-})
-
 const handleSync = async () => {
   await syncStore.syncAll()
-}
-
-const changePage = async (page: number) => {
-  if (page >= 1 && page <= jobStore.totalPages) {
-    await jobStore.fetchJobs(page)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
 }
 
 onMounted(async () => {
@@ -147,3 +108,23 @@ onMounted(async () => {
   ])
 })
 </script>
+
+<style scoped>
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.slide-fade-enter-from {
+  transform: translateY(-20px);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateY(-10px);
+  opacity: 0;
+}
+</style>

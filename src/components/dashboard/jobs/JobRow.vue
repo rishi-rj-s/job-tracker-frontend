@@ -98,11 +98,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { RefreshCw, ExternalLink, Edit, Trash2 } from 'lucide-vue-next'
-import type { Job } from '../types'
-import { useJobStore } from '../stores/jobStore'
-import { useStatusStore } from '../stores/statusStore'
-import { usePlatformStore } from '../stores/platformStore'
-import { useToast } from '../lib/composables/useToast'
+import type { Job } from '@type/index'
+import { useJobStore } from '@stores/jobStore'
+import { useStatusStore } from '@stores/statusStore'
+import { usePlatformStore } from '@stores/platformStore'
+import { useToast } from '@composables/useToast'
 
 const props = defineProps<{
   job: Job

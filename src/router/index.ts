@@ -1,20 +1,19 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@stores/authStore'
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'landing',
-    component: () => import('../views/Landing.vue'),
+    component: () => import('@views/Landing.vue'),
     meta: { 
       title: 'JobTracker - Track Your Job Applications Like a Pro',
-      requiresGuest: true 
     }
   },
   {
     path: '/login',
     name: 'login',
-    component: () => import('../views/Login.vue'),
+    component: () => import('@views/Login.vue'),
     meta: { 
       title: 'Login - JobTracker',
       requiresGuest: true 
@@ -23,7 +22,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/signup',
     name: 'signup',
-    component: () => import('../views/Signup.vue'),
+    component: () => import('@views/Signup.vue'),
     meta: { 
       title: 'Sign Up - JobTracker',
       requiresGuest: true 
@@ -32,7 +31,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/auth/callback',
     name: 'auth-callback',
-    component: () => import('../views/AuthCallback.vue'),
+    component: () => import('@views/AuthCallback.vue'),
     meta: { 
       title: 'Authenticating...'
     }
@@ -40,16 +39,16 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/dashboard',
     name: 'dashboard',
-    component: () => import('../views/Dashboard.vue'),
+    component: () => import('@views/Dashboard.vue'),
     meta: { 
       title: 'Dashboard - JobTracker',
-      requiresAuth: true 
+      // requiresAuth: true 
     },
     children: [
       {
         path: '',
         name: 'dashboard-home',
-        component: () => import('../components/dashboard/DashboardHome.vue'),
+        component: () => import('@components/dashboard/home/DashboardHome.vue'),
         meta: { 
           title: 'Dashboard - JobTracker'
         }
@@ -57,9 +56,33 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'jobs',
         name: 'jobs-applied',
-        component: () => import('../views/JobsApplied.vue'),
+        component: () => import('@views/Jobs.vue'),
         meta: { 
           title: 'My Applications - JobTracker'
+        }
+      },
+      {
+        path: 'calendar',
+        name: 'calendar',
+        component: () => import('@components/dashboard/calendar/CalendarPage.vue'),
+        meta: { 
+          title: 'Calendar - JobTracker'
+        }
+      },
+      {
+        path: 'analytics',
+        name: 'analytics',
+        component: () => import('@components/dashboard/analytics/AnalyticsPage.vue'),
+        meta: { 
+          title: 'Analytics - JobTracker'
+        }
+      },
+      {
+        path: 'contacts',
+        name: 'contacts',
+        component: () => import('@components/dashboard/contacts/ContactsPage.vue'),
+        meta: { 
+          title: 'Contacts - JobTracker'
         }
       }
     ]
@@ -67,7 +90,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
-    component: () => import('../views/NotFound.vue'),
+    component: () => import('@views/NotFound.vue'),
     meta: { 
       title: '404 - Page Not Found'
     }

@@ -1,4 +1,3 @@
-// stores/authStore.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '../lib/supabase'
@@ -42,18 +41,29 @@ export const useAuthStore = defineStore('auth', () => {
         options: {
           data: {
             full_name: fullName
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/dashboard`
         }
       })
 
       if (signUpError) throw signUpError
 
-      if (data.user) {
+      // Check if email confirmation is disabled (auto-login enabled)
+      if (data.user && data.session) {
         user.value = data.user
-        return { success: true, message: 'Account created successfully!' }
+        return { success: true, message: 'Account created successfully!', autoLogin: true }
       }
 
-      return { success: true, message: 'Please check your email to verify your account.' }
+      // Email confirmation required
+      if (data.user && !data.session) {
+        return { 
+          success: true, 
+          message: 'Please check your email to verify your account.', 
+          requiresVerification: true 
+        }
+      }
+
+      return { success: true, message: 'Account created! Please check your email.' }
     } catch (err: any) {
       error.value = err.message
       return { success: false, message: err.message }
@@ -94,7 +104,7 @@ export const useAuthStore = defineStore('auth', () => {
       const { data, error: signInError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/dashboard`
         }
       })
 

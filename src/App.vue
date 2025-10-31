@@ -1,58 +1,34 @@
 <template>
   <div id="app">
-    <router-view v-if="!authStore.loading" />
-    
-    <!-- Loading Screen -->
-    <div v-else class="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100">
+    <router-view v-if="!authLoading" />
+    <div v-else class="min-h-screen flex items-center justify-center bg-gray-900">
       <div class="text-center">
-        <div class="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mb-4"></div>
-        <h2 class="text-2xl font-bold text-gray-900 mb-2">Loading...</h2>
-        <p class="text-gray-600">Initializing your workspace</p>
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mb-4"></div>
+        <p class="text-gray-400">Loading...</p>
       </div>
     </div>
-
-    <!-- Global Toast -->
-    <Toast />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useAuthStore } from './stores/authStore'
-import { useHead } from '@vueuse/head'
-import Toast from './components/Toast.vue'
+import { onMounted, ref } from 'vue'
+import { useAuthStore } from '@/stores/authStore'
 
 const authStore = useAuthStore()
-
-// Global SEO defaults
-useHead({
-  titleTemplate: '%s | JobTracker',
-  meta: [
-    { name: 'viewport', content: 'width=device-width, initial-scale=1.0' },
-    { name: 'theme-color', content: '#4F46E5' }
-  ]
-})
+const authLoading = ref(true)
 
 onMounted(async () => {
-  await authStore.initialize()
+  try {
+    await authStore.initialize()
+    console.log('✅ Auth initialized:', authStore.isAuthenticated ? 'Logged in' : 'Guest')
+  } catch (error) {
+    console.error('❌ Auth initialization failed:', error)
+  } finally {
+    authLoading.value = false
+  }
 })
 </script>
 
 <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-#app {
-  width: 100%;
-  min-height: 100vh;
-}
+/* Global styles if needed */
 </style>

@@ -88,11 +88,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import StatusDropdown from './StatusDropdown.vue'
-import PlatformDropdown from './PlatformDropdown.vue'
-import { useJobStore } from '../stores/jobStore'
-import { useToast } from '../lib/composables/useToast'
-import type { Job } from '../types'
+import StatusDropdown from '@components/common/StatusDropdown.vue'
+import PlatformDropdown from '@components/common/PlatformDropdown.vue'
+import { useJobStore } from '@stores/jobStore'
+import { useToast } from '@composables/useToast'
+import type { Job } from '@type/index'
 
 const jobStore = useJobStore()
 const { showToast } = useToast()

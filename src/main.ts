@@ -1,4 +1,3 @@
-// main.ts
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createHead } from '@vueuse/head'

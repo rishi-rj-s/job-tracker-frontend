@@ -36,7 +36,7 @@
         </div>
 
         <div v-if="recentJobs.length === 0" class="text-center py-8 text-gray-500">
-          <Briefcase class="h-12 w-12 mx-auto mb-3 text-gray-300" />
+          <BriefcaseIcon class="h-12 w-12 mx-auto mb-3 text-gray-300" />
           <p>No applications yet</p>
           <router-link to="/dashboard/jobs" class="text-indigo-600 hover:text-indigo-700 text-sm mt-2 inline-block">
             Add your first application
@@ -73,7 +73,7 @@
             </div>
           </router-link>
 
-          <button @click="handleExport('csv')"
+          <button @click="handleExport"
                   class="w-full flex items-center gap-4 p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors group">
             <div class="p-3 bg-green-600 rounded-lg group-hover:scale-110 transition-transform">
               <Download class="h-6 w-6 text-white" />
@@ -107,11 +107,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { Briefcase, TrendingUp, Calendar, Target, Plus, Download, Lightbulb } from 'lucide-vue-next'
-import { useAuthStore } from '../../stores/authStore'
-import { useJobStore } from '../../stores/jobStore'
-import { useStatusStore } from '../../stores/statusStore'
-import { useToast } from '../../lib/composables/useToast'
+import { Briefcase as BriefcaseIcon, TrendingUp, Calendar, Target, Plus, Download, Lightbulb } from 'lucide-vue-next'
+import { useAuthStore } from '@stores/authStore'
+import { useJobStore } from '@stores/jobStore'
+import { useStatusStore } from '@stores/statusStore'
+import { useToast } from '@composables/useToast'
 
 const authStore = useAuthStore()
 const jobStore = useJobStore()
@@ -131,7 +131,7 @@ const stats = computed(() => {
   
   return [
     {
-      icon: Briefcase,
+      icon: BriefcaseIcon,
       bgColor: 'bg-blue-100',
       iconColor: 'text-blue-600',
       value: jobs.length,
@@ -173,8 +173,8 @@ const getStatusClass = (key: string) => {
   return classes[key] || 'bg-gray-100 text-gray-700'
 }
 
-const handleExport = async (format: 'csv' | 'json') => {
-  const result = await jobStore.exportJobs(format)
+const handleExport = async () => {
+  const result = await jobStore.exportJobs('csv')
   
   if (result.success) {
     showToast(result.message || 'Export successful!', 'green')

@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useJobStore } from './jobStore'
 import { useStatusStore } from './statusStore'
 import { usePlatformStore } from './platformStore'
-import { useToast } from '../lib/composables/useToast'
+import { useToast } from '@composables/useToast'
 import { supabase } from '../lib/supabase'
 
 export const useSyncStore = defineStore('sync', () => {

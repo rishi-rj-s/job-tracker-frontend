@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Status } from '../types'
-import { supabase } from '../lib/supabase'
+import type { Status } from '@type/index'
+import { supabase } from '@lib/supabase'
 
 export const useStatusStore = defineStore('status', () => {
-  const statuses = ref<Record>({
+  const statuses = ref<Record<string, string>>({
     'Applied': 'Applied',
     'Screening': 'Screening/Review',
     'Interview': 'Interview Scheduled',
@@ -13,7 +13,7 @@ export const useStatusStore = defineStore('status', () => {
     'Closed': 'No Follow-up Required'
   })
 
-  const pendingStatuses = ref([])
+  const pendingStatuses = ref<Array<{ key: string; name: string }>>([])
 
   const fixedStatuses = ['Applied', 'Screening', 'Interview', 'Offer', 'Rejected', 'Closed']
 

@@ -72,8 +72,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ChevronDown, Check, Plus, Trash2, X } from 'lucide-vue-next'
-import { usePlatformStore } from '../stores/platformStore'
-import { useToast } from '../lib/composables/useToast'
+import { usePlatformStore } from '../../stores/platformStore'
+import { useToast } from '@composables/useToast'
 
 const props = defineProps<{
   modelValue: string[]

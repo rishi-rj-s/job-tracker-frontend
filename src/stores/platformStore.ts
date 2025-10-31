@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Platform } from '../types'
-import { supabase } from '../lib/supabase'
+import type { Platform } from '@type/index'
+import { supabase } from '@lib/supabase'
 
 export const usePlatformStore = defineStore('platform', () => {
-  const platforms = ref<Record>({
+  const platforms = ref<Record<string, string>>({
     'linkedin': 'LinkedIn',
     'company-website': 'Company Website',
     'hr-email': 'HR Email',
@@ -13,7 +13,7 @@ export const usePlatformStore = defineStore('platform', () => {
     'other': 'Other'
   })
 
-  const pendingPlatforms = ref([])
+  const pendingPlatforms = ref<Array<{ key: string; name: string }>>([])
 
   const fixedPlatforms = ['linkedin', 'company-website', 'hr-email', 'whatsapp', 'recruiter', 'other']
 

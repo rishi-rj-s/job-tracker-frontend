@@ -1,7 +1,19 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Job } from '../types'
-import { supabase } from '../lib/supabase'
+import type { ExportFormat, Job } from '@type/index'
+import { supabase } from '@lib/supabase'
+
+interface SearchParams {
+  query?: string
+  status?: string
+  platform?: string
+  dateFrom?: string
+  dateTo?: string
+  sortBy?: string
+  sortOrder?: string
+  page?: number
+  limit?: number
+}
 
 export const useJobStore = defineStore('job', () => {
   const jobs = ref<Job[]>([])
@@ -12,6 +24,9 @@ export const useJobStore = defineStore('job', () => {
   const isLoading = ref(false)
   const connectionStatus = ref<'loading' | 'success' | 'error'>('loading')
   const errorMessage = ref('')
+
+  // Track active search params to know if we're in search mode
+  const activeSearchParams = ref<SearchParams | null>(null)
 
   const pendingJobs = ref<Job[]>([])
   const pendingUpdates = ref<{ id: string; tempId: string; data: Partial<Job> }[]>([])
@@ -41,6 +56,7 @@ export const useJobStore = defineStore('job', () => {
   async function fetchJobs(page = 1) {
     isLoading.value = true
     connectionStatus.value = 'loading'
+    activeSearchParams.value = null // Clear search params when fetching normally
 
     try {
       const headers = await getAuthHeaders()
@@ -96,6 +112,78 @@ export const useJobStore = defineStore('job', () => {
     }
   }
 
+  // NEW: Search jobs function
+  async function searchJobs(params: SearchParams) {
+    isLoading.value = true
+    connectionStatus.value = 'loading'
+    activeSearchParams.value = params // Store active search params
+
+    try {
+      const headers = await getAuthHeaders()
+
+      // Build query string
+      const queryParams = new URLSearchParams()
+      if (params.query) queryParams.append('q', params.query)
+      if (params.status) queryParams.append('status', params.status)
+      if (params.platform) queryParams.append('platform', params.platform)
+      if (params.dateFrom) queryParams.append('dateFrom', params.dateFrom)
+      if (params.dateTo) queryParams.append('dateTo', params.dateTo)
+      if (params.sortBy) queryParams.append('sortBy', params.sortBy)
+      if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder)
+      queryParams.append('page', String(params.page || 1))
+      queryParams.append('limit', String(params.limit || pageSize))
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search?${queryParams}`,
+        { headers }
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to search jobs')
+      }
+
+      const data = await response.json()
+
+      // Process search results similar to fetchJobs
+      let serverJobs = data.jobs.map((j: Job) => ({ ...j, isPending: false }))
+
+      // Update pagination
+      currentPage.value = data.pagination.currentPage
+      totalPages.value = data.pagination.totalPages
+      totalItems.value = data.pagination.totalItems
+
+      // Filter out deleted jobs
+      serverJobs = serverJobs.filter((sj: Job) =>
+        !pendingDeletes.value.some(pd => pd.id === (sj._id || sj.id))
+      )
+
+      // Apply pending updates
+      serverJobs = serverJobs.map((job: Job) => {
+        const jobId = job._id || job.id
+        const pendingUpdate = pendingUpdates.value.find(pu =>
+          (pu.id === jobId || pu.tempId === jobId)
+        )
+        if (pendingUpdate) {
+          return { ...job, ...pendingUpdate.data, isPending: true }
+        }
+        return job
+      })
+
+      jobs.value = serverJobs
+      connectionStatus.value = 'success'
+
+      return { success: true, data: serverJobs }
+    } catch (err: any) {
+      console.error('Search error:', err)
+      connectionStatus.value = 'error'
+      errorMessage.value = err.message || 'Search failed'
+      return { success: false, message: err.message }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   function addJob(job: Job) {
     const tempId = generateTempId()
     const optimisticJob: Job = { 
@@ -121,16 +209,19 @@ export const useJobStore = defineStore('job', () => {
     const jobIndex = jobs.value.findIndex(j => (j._id || j.id) === id)
     if (jobIndex === -1) return
 
-    jobs.value[jobIndex] = { ...jobs.value[jobIndex], ...data, isPending: true }
+    const currentJob = jobs.value[jobIndex]
+    if (!currentJob) return
 
-    const serverId = (jobs.value[jobIndex]._id || id) as string
-    const tempId = (jobs.value[jobIndex].id || id) as string
+    jobs.value[jobIndex] = { ...currentJob, ...data, isPending: true }
+
+    const serverId = (currentJob._id || id) as string
+    const tempId = (currentJob.id || id) as string
 
     const existingIndex = pendingUpdates.value.findIndex(u => u.tempId === tempId)
 
-    if (existingIndex !== -1) {
-      pendingUpdates.value[existingIndex].data = {
-        ...pendingUpdates.value[existingIndex].data,
+    if (existingIndex !== -1 && pendingUpdates.value[existingIndex]) {
+      pendingUpdates.value[existingIndex]!.data = {
+        ...pendingUpdates.value[existingIndex]!.data,
         ...data
       }
     } else {
@@ -153,7 +244,9 @@ export const useJobStore = defineStore('job', () => {
       pendingDeletes.value.push({ id: serverId })
     }
 
-    jobs.value.splice(jobIndex, 1)
+    if (jobIndex !== -1) {
+      jobs.value.splice(jobIndex, 1)
+    }
     totalItems.value--
   }
 
@@ -163,7 +256,9 @@ export const useJobStore = defineStore('job', () => {
 
     // Sync new jobs (POST)
     for (const job of [...pendingJobs.value]) {
-      const tempId = job.id!
+      if (!job.id) continue
+      
+      const tempId = job.id
       const postData: Partial<Job> = { ...job }
       delete postData.isPending
       delete postData.id
@@ -187,7 +282,7 @@ export const useJobStore = defineStore('job', () => {
         pendingJobs.value = pendingJobs.value.filter(j => j.id !== tempId)
 
         const jobIndex = jobs.value.findIndex(j => j.id === tempId)
-        if (jobIndex !== -1) {
+        if (jobIndex !== -1 && jobs.value[jobIndex]) {
           jobs.value[jobIndex] = { ...data, isPending: false }
         }
       } catch (err) {
@@ -247,15 +342,24 @@ export const useJobStore = defineStore('job', () => {
         console.error('Failed to sync job DELETE:', err)
       }
     }
+
+    // After syncing, refresh the current view
+    if (activeSearchParams.value) {
+      // If in search mode, re-run the search
+      await searchJobs(activeSearchParams.value)
+    } else {
+      // Otherwise, fetch normally
+      await fetchJobs(currentPage.value)
+    }
   }
 
   // Export jobs function
-  async function exportJobs(format: 'csv' | 'json' = 'csv') {
+  async function exportJobs(format: ExportFormat) {
     try {
       const headers = await getAuthHeaders()
       
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-jobs?format=${format}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/exportJobsData?format=${format}`,
         { headers }
       )
 
@@ -264,8 +368,9 @@ export const useJobStore = defineStore('job', () => {
       }
 
       const contentDisposition = response.headers.get('Content-Disposition')
-      const filename = contentDisposition
-        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+      const filenameParts = contentDisposition?.split('filename=')
+      const filename = filenameParts && filenameParts[1]
+        ? filenameParts[1].replace(/"/g, '')
         : `job_applications_${new Date().toISOString().split('T')[0]}.${format}`
 
       const blob = await response.blob()
@@ -295,7 +400,9 @@ export const useJobStore = defineStore('job', () => {
     errorMessage,
     hasPendingChanges,
     pendingCount,
+    activeSearchParams,
     fetchJobs,
+    searchJobs, // NEW: Export search function
     addJob,
     updateJob,
     deleteJob,
