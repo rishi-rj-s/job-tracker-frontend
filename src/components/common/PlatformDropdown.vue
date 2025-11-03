@@ -6,7 +6,7 @@
       <p v-if="modelValue.length === 0" class="text-sm text-gray-500 italic">No platforms selected</p>
       <div v-else class="flex flex-wrap gap-2">
         <div v-for="platformKey in modelValue" :key="platformKey"
-             :class="['inline-flex items-center px-3.5 py-2 rounded-full text-sm font-semibold transition-all hover:translate-y-px] hover:shadow-md', getPlatformClass(platformKey)]">
+             :class="['inline-flex items-center px-3.5 py-2 rounded-full text-sm font-semibold transition-all hover:translate-y-px hover:shadow-md', getPlatformClass(platformKey)]">
           <span>{{ platformStore.platforms[platformKey] }}</span>
           <button type="button" @click="removePlatform(platformKey)"
                   class="ml-2 w-4 h-4 flex items-center justify-center rounded-full hover:bg-black hover:bg-opacity-20 transition-all hover:scale-110">
@@ -55,8 +55,8 @@
                 </span>
                 <Check v-if="modelValue.includes(key)" class="h-4 w-4 ml-2 text-blue-600" />
               </label>
-              <button v-if="!platformStore.fixedPlatforms.includes(key)" type="button"
-                      @click.stop="deletePlatform(key)"
+              <button v-if="!platformStore.isDefaultPlatform(key)" type="button"
+                      @click.stop="deletePlatformHandler(key)"
                       class="ml-2 text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition"
                       title="Delete Platform">
                 <Trash2 class="h-4 w-4" />
@@ -72,8 +72,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ChevronDown, Check, Plus, Trash2, X } from 'lucide-vue-next'
-import { usePlatformStore } from '../../stores/platformStore'
-import { useToast } from '@composables/useToast'
+import { usePlatformStore } from '@/stores/platformStore'
+import { useToast } from '@/composables/useToast'
 
 const props = defineProps<{
   modelValue: string[]
@@ -140,28 +140,38 @@ const removePlatform = (key: string) => {
   emit('update:modelValue', newValue)
 }
 
-const createPlatform = () => {
+// ✅ FIX: Preserve original user input for name
+const createPlatform = async () => {
   if (!searchQuery.value.trim()) return
 
-  const key = platformStore.createPlatformKey(searchQuery.value)
-
-  if (platformStore.platforms[key]) {
-    showToast('Platform already exists!', 'yellow')
+  const originalName = searchQuery.value.trim() // Keep original capitalization
+  const result = await platformStore.addPlatform(originalName)
+  
+  if (!result.success) {
+    showToast(result.message || 'Failed to create platform', 'red')
     return
   }
 
-  platformStore.addPlatform(key, searchQuery.value)
-  emit('update:modelValue', [...props.modelValue, key])
+  // Add to selection
+  emit('update:modelValue', [...props.modelValue, result.key!])
   searchQuery.value = ''
-  showToast(`Platform "${searchQuery.value}" created!`, 'green')
+  showToast(`Platform "${originalName}" created! Click 'Sync Data' to save.`, 'blue')
 }
 
-const deletePlatform = (key: string) => {
-  if (!platformStore.deletePlatform(key)) {
-    showToast('Cannot delete fixed platforms.', 'red')
+const deletePlatformHandler = async (key: string) => {
+  const result = await platformStore.deletePlatform(key)
+  
+  if (!result.success) {
+    showToast(result.message || 'Cannot delete this platform', 'red')
     return
   }
-  showToast('Platform deleted. Sync to save changes.', 'orange')
+
+  // Remove from selection if it was selected
+  if (props.modelValue.includes(key)) {
+    removePlatform(key)
+  }
+
+  showToast('Platform deleted successfully!', 'green')
 }
 
 const handleClickOutside = (e: MouseEvent) => {

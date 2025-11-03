@@ -3,10 +3,11 @@
     <div class="container">
       <div class="nav-content">
         <!-- Logo -->
-        <div class="logo" @click="$router.push(isAuthenticated ? '/dashboard' : '/')">
+        <div class="logo" @click="$router.push('/')">
           <Briefcase class="logo-icon" />
           <span class="logo-text">ApplyLog</span>
         </div>
+
 
         <!-- Desktop Navigation -->
         <div class="nav-links desktop-nav">

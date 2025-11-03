@@ -2,7 +2,7 @@
   <div class="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-100">
     <h2 class="text-2xl font-bold text-blue-700 mb-4 pb-2 border-b border-gray-200">Log New Application</h2>
     <p class="text-sm text-gray-600 mb-4">Fill out this form each time you send out a job application</p>
-    
+
     <form @submit.prevent="handleSubmit" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       
       <div class="lg:col-span-4 grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -79,10 +79,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Plus } from 'lucide-vue-next'
-import StatusDropdown from '@components/common/StatusDropdown.vue'
-import PlatformDropdown from '@components/common/PlatformDropdown.vue'
-import { useJobStore } from '@stores/jobStore'
-import { useToast } from '@composables/useToast'
+import StatusDropdown from '@/components/common/StatusDropdown.vue'
+import PlatformDropdown from '@/components/common/PlatformDropdown.vue'
+import { useJobStore } from '@/stores/jobStore'
+import { useStatusStore } from '@/stores/statusStore'
+import { usePlatformStore } from '@/stores/platformStore'
+import { useToast } from '@/composables/useToast'
 import type { Job } from '@type/index'
 
 const emit = defineEmits<{
@@ -90,6 +92,8 @@ const emit = defineEmits<{
 }>()
 
 const jobStore = useJobStore()
+const statusStore = useStatusStore()
+const platformStore = usePlatformStore()
 const { showToast } = useToast()
 
 const formData = ref<Job>({
@@ -99,7 +103,7 @@ const formData = ref<Job>({
   jobLink: '',
   salary: '',
   location: '',
-  status: 'Applied',
+  status: 'applied', // Use lowercase default
   nextActionDate: '',
   notes: '',
   applicationPlatforms: []
@@ -116,9 +120,22 @@ const handleSubmit = () => {
     return
   }
 
+  // Check if stores have data
+  if (Object.keys(statusStore.statuses).length === 0) {
+    showToast('Status data not loaded. Please refresh the page.', 'red')
+    console.error('❌ Status store is empty!')
+    return
+  }
+
+  if (Object.keys(platformStore.platforms).length === 0) {
+    showToast('Platform data not loaded. Please refresh the page.', 'red')
+    console.error('❌ Platform store is empty!')
+    return
+  }
+
   try {
     jobStore.addJob(formData.value)
-    showToast("Application logged! Click 'Sync Data' to save to backend.", 'blue')
+    showToast("Application logged!", 'blue')
 
     // Reset form
     formData.value = {
@@ -128,7 +145,7 @@ const handleSubmit = () => {
       jobLink: '',
       salary: '',
       location: '',
-      status: 'Applied',
+      status: 'applied',
       nextActionDate: '',
       notes: '',
       applicationPlatforms: []

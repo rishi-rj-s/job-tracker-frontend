@@ -118,20 +118,21 @@ const platformStore = usePlatformStore()
 const { showToast } = useToast()
 
 const showConfirm = ref(false)
-const selectedStatus = ref(props.job.status || 'Applied')
+const selectedStatus = ref(props.job.status || 'applied')
 
 const isPending = computed(() => props.job.isPending)
 
 const rowClass = computed(() => {
+  const statusKey = props.job.status?.toLowerCase() || 'applied'
   const classes: Record<string, string> = {
-    'Applied': 'status-Applied',
-    'Screening': 'status-Screening',
-    'Interview': 'status-Interview',
-    'Offer': 'status-Offer',
-    'Rejected': 'status-Rejected',
-    'Closed': 'status-Closed',
+    'applied': 'status-Applied',
+    'screening': 'status-Screening',
+    'interview': 'status-Interview',
+    'offer': 'status-Offer',
+    'rejected': 'status-Rejected',
+    'closed': 'status-Closed',
   }
-  return classes[props.job.status] || 'status-Custom'
+  return classes[statusKey] || 'status-Custom'
 })
 
 const pendingStyle = computed(() => {
@@ -139,15 +140,16 @@ const pendingStyle = computed(() => {
 })
 
 const getStatusClass = (key: string) => {
+  const lowerKey = key?.toLowerCase() || 'applied'
   const classes: Record<string, string> = {
-    'Applied': 'status-Applied-bg',
-    'Screening': 'status-Screening-bg',
-    'Interview': 'status-Interview-bg',
-    'Offer': 'status-Offer-bg',
-    'Rejected': 'status-Rejected-bg',
-    'Closed': 'status-Closed-bg',
+    'applied': 'status-Applied-bg',
+    'screening': 'status-Screening-bg',
+    'interview': 'status-Interview-bg',
+    'offer': 'status-Offer-bg',
+    'rejected': 'status-Rejected-bg',
+    'closed': 'status-Closed-bg',
   }
-  return classes[key] || 'status-Custom-bg'
+  return classes[lowerKey] || 'status-Custom-bg'
 }
 
 const getPlatformClass = (key: string) => {

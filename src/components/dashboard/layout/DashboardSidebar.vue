@@ -8,9 +8,9 @@
     <div class="flex flex-col h-screen">
       <!-- Logo -->
       <div class="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
-        <router-link to="/dashboard" class="flex items-center gap-2">
+        <router-link to="/" class="flex items-center gap-2">
           <Briefcase class="h-8 w-8 text-indigo-400" />
-          <span class="text-xl font-bold text-white">JobTracker</span>
+          <span class="text-xl font-bold text-white">ApplyLog</span>
         </router-link>
         <button 
           @click="$emit('update:open', false)"

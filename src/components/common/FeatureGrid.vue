@@ -6,8 +6,15 @@
       class="bg-white rounded-lg p-6 border border-gray-200"
     >
       <div class="flex items-center gap-3 mb-3">
-        <div :class="['p-2 rounded-lg', colorClasses[feature.color]]">
-          <component :is="getIcon(feature.icon)" class="h-5 w-5" :class="textColorClasses[feature.color]" />
+        <div 
+          class="p-2 rounded-lg"
+          :style="{ backgroundColor: `${feature.color}15` }"
+        >
+          <component 
+            :is="getIcon(feature.icon)" 
+            class="h-5 w-5" 
+            :style="{ color: feature.color }"
+          />
         </div>
         <h3 class="font-semibold text-gray-900">{{ feature.title }}</h3>
       </div>
@@ -26,12 +33,20 @@ import {
   Target,
   UserCircle,
   MessageSquare,
-  Mail
+  Mail,
+  BarChart,
+  FileText,
+  Search,
+  Settings,
+  Download,
+  Upload,
+  Filter,
+  Globe
 } from 'lucide-vue-next'
 
 interface Feature {
   icon: string
-  color: 'blue' | 'green' | 'purple'
+  color: string // Now accepts any color (hex, rgb, named colors, etc.)
   title: string
   description: string
 }
@@ -39,18 +54,6 @@ interface Feature {
 defineProps<{
   features: Feature[]
 }>()
-
-const colorClasses = {
-  blue: 'bg-blue-100',
-  green: 'bg-green-100',
-  purple: 'bg-purple-100'
-}
-
-const textColorClasses = {
-  blue: 'text-blue-600',
-  green: 'text-green-600',
-  purple: 'text-purple-600'
-}
 
 const getIcon = (iconName: string) => {
   const icons: Record<string, any> = {
@@ -62,7 +65,15 @@ const getIcon = (iconName: string) => {
     'target': Target,
     'user-circle': UserCircle,
     'message-square': MessageSquare,
-    'mail': Mail
+    'mail': Mail,
+    'bar-chart': BarChart,
+    'file-text': FileText,
+    'search': Search,
+    'settings': Settings,
+    'download': Download,
+    'upload': Upload,
+    'filter': Filter,
+    'globe': Globe
   }
   return icons[iconName] || Bell
 }

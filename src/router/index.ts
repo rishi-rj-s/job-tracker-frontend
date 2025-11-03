@@ -42,7 +42,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@views/Dashboard.vue'),
     meta: { 
       title: 'Dashboard - JobTracker',
-      // requiresAuth: true 
+      requiresAuth: true 
     },
     children: [
       {

@@ -1,10 +1,5 @@
 <template>
   <div class="space-y-6">
-    <PageHeader 
-      title="Calendar"
-      description="Track interviews, follow-ups, and important deadlines"
-    />
-
     <ComingSoonCard 
       icon="calendar"
       title="Calendar Coming Soon"
@@ -16,7 +11,6 @@
 </template>
 
 <script setup lang="ts">
-import PageHeader from '@components/common/PageHeader.vue'
 import ComingSoonCard from '@components/common/ComingSoonCard.vue'
 import FeatureGrid from '@components/common/FeatureGrid.vue'
 

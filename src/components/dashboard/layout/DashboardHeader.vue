@@ -16,8 +16,8 @@
 
       <!-- Right Actions -->
       <div class="flex items-center gap-3 ml-auto">
-        <!-- Export Dropdown -->
-        <ExportDropdown />
+        <!-- Export Dropdown - Only show on Jobs page -->
+        <ExportDropdown v-if="isJobsPage" />
       </div>
     </div>
   </header>
@@ -35,9 +35,24 @@ defineEmits<{
 
 const route = useRoute()
 
+// Get page title from route meta or fallback to manual mapping
 const pageTitle = computed(() => {
-  if (route.path === '/dashboard') return 'Dashboard'
+  // First try route meta
+  if (route.meta.pageTitle) {
+    return route.meta.pageTitle as string
+  }
+  
+  // Fallback to path-based mapping
+  if (route.path === '/dashboard') return 'My Dashboard'
   if (route.path.includes('/jobs')) return 'My Applications'
+  if (route.path.includes('/calendar')) return 'My Calendar'
+  if (route.path.includes('/analytics')) return 'My Analytics'
+  if (route.path.includes('/contacts')) return 'My Contacts'
   return 'JobTracker'
+})
+
+// Only show export button on Jobs page
+const isJobsPage = computed(() => {
+  return route.path.includes('/jobs')
 })
 </script>

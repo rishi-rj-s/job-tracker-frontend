@@ -4,6 +4,8 @@ import { createHead } from '@vueuse/head'
 import App from './App.vue'
 import router from './router'
 import './assets/styles.css'
+import { setupProgress } from './plugins/nprogress'
+
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -12,6 +14,7 @@ const head = createHead()
 // Register plugins
 app.use(pinia)
 app.use(router)
+setupProgress(router)
 app.use(head)
 
 // Mount app

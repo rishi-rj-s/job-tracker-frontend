@@ -3,40 +3,55 @@ import { ref } from 'vue'
 export type ToastType = 'blue' | 'green' | 'red' | 'yellow' | 'orange' | 'gray'
 
 interface Toast {
-  id: number
+  id: string
   message: string
   type: ToastType
   show: boolean
 }
 
+// Global state - shared across all components
 const toasts = ref<Toast[]>([])
-let toastId = 0
 
-export const useToast = () => {
+export function useToast() {
   const showToast = (message: string, type: ToastType = 'blue', duration = 3000) => {
-    const id = toastId++
-    const toast: Toast = { id, message, type, show: false }
-
+    const id = `toast-${Date.now()}-${Math.random()}`
+    
+    const toast: Toast = {
+      id,
+      message,
+      type,
+      show: false
+    }
+    
     toasts.value.push(toast)
-
+    
+    // Trigger animation
     setTimeout(() => {
-      toast.show = true
+      const index = toasts.value.findIndex(t => t.id === id)
+      if (index !== -1) {
+        toasts.value[index]!.show = true
+      }
     }, 10)
-
+    
+    // Auto remove
     setTimeout(() => {
       removeToast(id)
     }, duration)
   }
-
-  const removeToast = (id: number) => {
-    const toast = toasts.value.find(t => t.id === id)
-    if (toast) {
-      toast.show = false
+  
+  const removeToast = (id: string) => {
+    const index = toasts.value.findIndex(t => t.id === id)
+    if (index !== -1) {
+      toasts.value[index]!.show = false
       setTimeout(() => {
         toasts.value = toasts.value.filter(t => t.id !== id)
-      }, 400)
+      }, 300)
     }
   }
-
-  return { toasts, showToast, removeToast }
+  
+  return {
+    toasts,
+    showToast,
+    removeToast
+  }
 }

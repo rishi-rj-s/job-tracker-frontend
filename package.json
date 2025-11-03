@@ -11,8 +11,10 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.76.1",
     "@tailwindcss/vite": "^4.1.16",
+    "@types/nprogress": "^0.2.3",
     "@vueuse/head": "^2.0.0",
     "lucide-vue-next": "^0.548.0",
+    "nprogress": "^0.2.0",
     "pinia": "^3.0.3",
     "tailwindcss": "^4.1.16",
     "vue": "^3.5.22",

@@ -1,10 +1,5 @@
 <template>
   <div class="space-y-6">
-    <PageHeader 
-      title="Analytics"
-      description="Insights and statistics about your job search"
-    />
-
     <ComingSoonCard 
       icon="bar-chart"
       title="Analytics Coming Soon"
@@ -16,7 +11,6 @@
 </template>
 
 <script setup lang="ts">
-import PageHeader from '@components/common/PageHeader.vue'
 import ComingSoonCard from '@components/common/ComingSoonCard.vue'
 import FeatureGrid from '@components/common/FeatureGrid.vue'
 

@@ -88,13 +88,18 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import StatusDropdown from '@components/common/StatusDropdown.vue'
-import PlatformDropdown from '@components/common/PlatformDropdown.vue'
-import { useJobStore } from '@stores/jobStore'
-import { useToast } from '@composables/useToast'
+import { X, Check } from 'lucide-vue-next'
+import StatusDropdown from '@/components/common/StatusDropdown.vue'
+import PlatformDropdown from '@/components/common/PlatformDropdown.vue'
+import { useJobStore } from '@/stores/jobStore'
+import { useStatusStore } from '@/stores/statusStore'
+import { usePlatformStore } from '@/stores/platformStore'
+import { useToast } from '@/composables/useToast'
 import type { Job } from '@type/index'
 
 const jobStore = useJobStore()
+const statusStore = useStatusStore()
+const platformStore = usePlatformStore()
 const { showToast } = useToast()
 
 const isOpen = ref(false)
@@ -107,7 +112,7 @@ const formData = ref<Job>({
   jobLink: '',
   salary: '',
   location: '',
-  status: 'Applied',
+  status: 'applied',
   nextActionDate: '',
   notes: '',
   applicationPlatforms: []
@@ -117,7 +122,15 @@ const openModal = (event: Event) => {
   const customEvent = event as CustomEvent<Job>
   const job = customEvent.detail
 
+  console.log('📝 Opening edit modal for job:', job)
+  console.log('📊 Available statuses:', Object.keys(statusStore.statuses))
+  console.log('📊 Available platforms:', Object.keys(platformStore.platforms))
+
   currentJobId.value = job._id || job.id || ''
+  
+  // Normalize status to lowercase for consistency
+  const normalizedStatus = (job.status || 'applied').toLowerCase()
+  
   formData.value = {
     jobTitle: job.jobTitle || '',
     company: job.company || '',
@@ -125,11 +138,13 @@ const openModal = (event: Event) => {
     jobLink: job.jobLink || '',
     salary: job.salary || '',
     location: job.location || '',
-    status: job.status || 'Applied',
+    status: normalizedStatus,
     nextActionDate: job.nextActionDate ? job.nextActionDate.substring(0, 10) : '',
     notes: job.notes || '',
     applicationPlatforms: job.applicationPlatforms || []
   }
+
+  console.log('✅ Form data set with status:', formData.value.status)
 
   isOpen.value = true
 }
@@ -149,6 +164,19 @@ const handleSubmit = () => {
     return
   }
 
+  // Check if stores have data
+  if (Object.keys(statusStore.statuses).length === 0) {
+    showToast('Status data not loaded. Please refresh the page.', 'red')
+    console.error('❌ Status store is empty!')
+    return
+  }
+
+  if (Object.keys(platformStore.platforms).length === 0) {
+    showToast('Platform data not loaded. Please refresh the page.', 'red')
+    console.error('❌ Platform store is empty!')
+    return
+  }
+
   jobStore.updateJob(currentJobId.value, formData.value)
   showToast(`Job updated instantly! Click 'Sync Data' to save to backend.`, 'blue')
   closeModal()
@@ -161,6 +189,10 @@ const handleEscape = (e: KeyboardEvent) => {
 }
 
 onMounted(() => {
+  console.log('🔧 Edit modal mounted')
+  console.log('📊 Statuses available:', Object.keys(statusStore.statuses).length)
+  console.log('📊 Platforms available:', Object.keys(platformStore.platforms).length)
+  
   window.addEventListener('open-edit-modal', openModal as EventListener)
   document.addEventListener('keydown', handleEscape)
 })
