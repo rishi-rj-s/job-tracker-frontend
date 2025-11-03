@@ -1,6 +1,8 @@
 <template>
   <div class="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-100">
-    <h2 class="text-2xl font-bold text-blue-700 mb-4 pb-2 border-b border-gray-200">Add New Application</h2>
+    <h2 class="text-2xl font-bold text-blue-700 mb-4 pb-2 border-b border-gray-200">Log New Application</h2>
+    <p class="text-sm text-gray-600 mb-4">Fill out this form each time you send out a job application</p>
+
     <form @submit.prevent="handleSubmit" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       
       <div class="lg:col-span-4 grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -67,7 +69,7 @@
         <button type="submit"
                 class="w-full md:w-auto bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-200 flex items-center justify-center">
           <Plus class="h-5 w-5 mr-2" />
-          Add New Application
+          Log Application
         </button>
       </div>
     </form>
@@ -77,13 +79,21 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Plus } from 'lucide-vue-next'
-import StatusDropdown from './StatusDropdown.vue'
-import PlatformDropdown from './PlatformDropdown.vue'
-import { useJobStore } from '../stores/jobStore'
-import { useToast } from '../lib/composables/useToast'
-import type { Job } from '../types'
+import StatusDropdown from '@/components/common/StatusDropdown.vue'
+import PlatformDropdown from '@/components/common/PlatformDropdown.vue'
+import { useJobStore } from '@/stores/jobStore'
+import { useStatusStore } from '@/stores/statusStore'
+import { usePlatformStore } from '@/stores/platformStore'
+import { useToast } from '@/composables/useToast'
+import type { Job } from '@type/index'
+
+const emit = defineEmits<{
+  submitted: []
+}>()
 
 const jobStore = useJobStore()
+const statusStore = useStatusStore()
+const platformStore = usePlatformStore()
 const { showToast } = useToast()
 
 const formData = ref<Job>({
@@ -93,7 +103,7 @@ const formData = ref<Job>({
   jobLink: '',
   salary: '',
   location: '',
-  status: 'Applied',
+  status: 'applied', // Use lowercase default
   nextActionDate: '',
   notes: '',
   applicationPlatforms: []
@@ -110,20 +120,42 @@ const handleSubmit = () => {
     return
   }
 
-  jobStore.addJob(formData.value)
-  showToast("Application added instantly! Click 'Sync Data' to save to backend.", 'blue')
+  // Check if stores have data
+  if (Object.keys(statusStore.statuses).length === 0) {
+    showToast('Status data not loaded. Please refresh the page.', 'red')
+    console.error('❌ Status store is empty!')
+    return
+  }
 
-  formData.value = {
-    jobTitle: '',
-    company: '',
-    dateApplied: '',
-    jobLink: '',
-    salary: '',
-    location: '',
-    status: 'Applied',
-    nextActionDate: '',
-    notes: '',
-    applicationPlatforms: []
+  if (Object.keys(platformStore.platforms).length === 0) {
+    showToast('Platform data not loaded. Please refresh the page.', 'red')
+    console.error('❌ Platform store is empty!')
+    return
+  }
+
+  try {
+    jobStore.addJob(formData.value)
+    showToast("Application logged!", 'blue')
+
+    // Reset form
+    formData.value = {
+      jobTitle: '',
+      company: '',
+      dateApplied: '',
+      jobLink: '',
+      salary: '',
+      location: '',
+      status: 'applied',
+      nextActionDate: '',
+      notes: '',
+      applicationPlatforms: []
+    }
+
+    // Emit submitted event to close form
+    emit('submitted')
+  } catch (error) {
+    console.error('Error adding job:', error)
+    showToast('Failed to add application. Please try again.', 'red')
   }
 }
 </script>

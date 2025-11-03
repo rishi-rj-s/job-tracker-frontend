@@ -1,7 +1,21 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Job } from '../types'
-import { supabase } from '../lib/supabase'
+import type { ExportFormat, Job } from '@type/index'
+import { supabase } from '@lib/supabase'
+import { useStatusStore } from './statusStore'
+import { usePlatformStore } from './platformStore'
+
+interface SearchParams {
+  query?: string
+  status?: string
+  platform?: string
+  dateFrom?: string
+  dateTo?: string
+  sortBy?: string
+  sortOrder?: string
+  page?: number
+  limit?: number
+}
 
 export const useJobStore = defineStore('job', () => {
   const jobs = ref<Job[]>([])
@@ -13,6 +27,10 @@ export const useJobStore = defineStore('job', () => {
   const connectionStatus = ref<'loading' | 'success' | 'error'>('loading')
   const errorMessage = ref('')
 
+  // Track active search params
+  const activeSearchParams = ref<SearchParams | null>(null)
+
+  // Track only FAILED operations that need retry
   const pendingJobs = ref<Job[]>([])
   const pendingUpdates = ref<{ id: string; tempId: string; data: Partial<Job> }[]>([])
   const pendingDeletes = ref<{ id: string }[]>([])
@@ -29,17 +47,61 @@ export const useJobStore = defineStore('job', () => {
     return `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
   }
 
+  async function getAuthHeaders() {
+    const { data: { session } } = await supabase.auth.getSession()
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session?.access_token || ''}`
+    }
+  }
+
+  // ✅ NEW: Prepare job data with metadata for custom fields
+  function prepareJobDataForBackend(job: Partial<Job>) {
+    const statusStore = useStatusStore()
+    const platformStore = usePlatformStore()
+
+    const data: any = { ...job }
+
+    // Add status metadata (key + name)
+    if (job.status) {
+      data.status = job.status  // Keep the key
+      data.statusName = statusStore.statuses[job.status] || job.status  // Add name
+      data.statusMetadata = {
+        key: job.status,
+        name: statusStore.statuses[job.status] || job.status
+      }
+    }
+
+    // Add platforms metadata (key + name for each)
+    if (job.applicationPlatforms && Array.isArray(job.applicationPlatforms)) {
+      data.applicationPlatforms = job.applicationPlatforms  // Keep the keys array
+      data.platformsMetadata = job.applicationPlatforms.map(key => ({
+        key: key,
+        name: platformStore.platforms[key] || key
+      }))
+    }
+
+    return data
+  }
+
   async function fetchJobs(page = 1) {
     isLoading.value = true
     connectionStatus.value = 'loading'
+    activeSearchParams.value = null
 
     try {
-      const { data, error } = await supabase.functions.invoke('jobs', {
-        method: 'GET',
-        body: { page, limit: pageSize }
-      })
+      const headers = await getAuthHeaders()
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/jobs?page=${page}&limit=${pageSize}`,
+        { headers }
+      )
 
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error('Failed to fetch jobs')
+      }
+
+      const data = await response.json()
 
       let serverJobs = data.jobs.map((j: Job) => ({ ...j, isPending: false }))
 
@@ -47,10 +109,12 @@ export const useJobStore = defineStore('job', () => {
       totalPages.value = data.pagination.totalPages
       totalItems.value = data.pagination.totalItems
 
+      // Filter out deleted jobs
       serverJobs = serverJobs.filter((sj: Job) =>
         !pendingDeletes.value.some(pd => pd.id === (sj._id || sj.id))
       )
 
+      // Add ONLY failed jobs (not successfully synced ones)
       if (page === 1) {
         const jobsForMerge = pendingJobs.value.filter(j =>
           !serverJobs.some((cj: Job) => cj.jobTitle === j.jobTitle && cj.company === j.company)
@@ -58,6 +122,7 @@ export const useJobStore = defineStore('job', () => {
         serverJobs.unshift(...jobsForMerge)
       }
 
+      // Apply pending updates
       serverJobs = serverJobs.map((job: Job) => {
         const jobId = job._id || job.id
         const pendingUpdate = pendingUpdates.value.find(pu =>
@@ -81,7 +146,74 @@ export const useJobStore = defineStore('job', () => {
     }
   }
 
-  function addJob(job: Job) {
+  async function searchJobs(params: SearchParams) {
+    isLoading.value = true
+    connectionStatus.value = 'loading'
+    activeSearchParams.value = params
+
+    try {
+      const headers = await getAuthHeaders()
+
+      const queryParams = new URLSearchParams()
+      if (params.query) queryParams.append('q', params.query)
+      if (params.status) queryParams.append('status', params.status)
+      if (params.platform) queryParams.append('platform', params.platform)
+      if (params.dateFrom) queryParams.append('dateFrom', params.dateFrom)
+      if (params.dateTo) queryParams.append('dateTo', params.dateTo)
+      if (params.sortBy) queryParams.append('sortBy', params.sortBy)
+      if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder)
+      queryParams.append('page', String(params.page || 1))
+      queryParams.append('limit', String(params.limit || pageSize))
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search?${queryParams}`,
+        { headers }
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to search jobs')
+      }
+
+      const data = await response.json()
+
+      let serverJobs = data.jobs.map((j: Job) => ({ ...j, isPending: false }))
+
+      currentPage.value = data.pagination.currentPage
+      totalPages.value = data.pagination.totalPages
+      totalItems.value = data.pagination.totalItems
+
+      serverJobs = serverJobs.filter((sj: Job) =>
+        !pendingDeletes.value.some(pd => pd.id === (sj._id || sj.id))
+      )
+
+      serverJobs = serverJobs.map((job: Job) => {
+        const jobId = job._id || job.id
+        const pendingUpdate = pendingUpdates.value.find(pu =>
+          (pu.id === jobId || pu.tempId === jobId)
+        )
+        if (pendingUpdate) {
+          return { ...job, ...pendingUpdate.data, isPending: true }
+        }
+        return job
+      })
+
+      jobs.value = serverJobs
+      connectionStatus.value = 'success'
+
+      return { success: true, data: serverJobs }
+    } catch (err: any) {
+      console.error('Search error:', err)
+      connectionStatus.value = 'error'
+      errorMessage.value = err.message || 'Search failed'
+      return { success: false, message: err.message }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // ✅ UPDATED: Add job with metadata
+  async function addJob(job: Job) {
     const tempId = generateTempId()
     const optimisticJob: Job = { 
       ...job, 
@@ -91,39 +223,125 @@ export const useJobStore = defineStore('job', () => {
       tempId 
     }
 
+    // Add to UI immediately
     if (currentPage.value === 1) {
       jobs.value.unshift(optimisticJob)
       if (jobs.value.length > pageSize) {
         jobs.value.pop()
       }
     }
-
-    pendingJobs.value.push(optimisticJob)
     totalItems.value++
+
+    // Try to sync immediately in background
+    try {
+      const headers = await getAuthHeaders()
+      
+      // ✅ Prepare data with metadata
+      const postData = prepareJobDataForBackend(job)
+      delete postData.isPending
+      delete postData.id
+      delete postData._id
+      delete postData.tempId
+
+      console.log('🚀 Immediately syncing new job with metadata:', postData)
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/jobs`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(postData)
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to sync job')
+      }
+
+      const data = await response.json()
+      
+      console.log('✅ Job synced immediately!')
+
+      // Replace temp job with real job
+      const jobIndex = jobs.value.findIndex(j => j.id === tempId)
+      if (jobIndex !== -1) {
+        jobs.value[jobIndex] = { ...data, isPending: false }
+      }
+
+    } catch (err) {
+      console.error('❌ Failed to sync job immediately, will retry on manual sync:', err)
+      pendingJobs.value.push(optimisticJob)
+    }
   }
 
-  function updateJob(id: string, data: Partial<Job>) {
+  // ✅ UPDATED: Update job with metadata
+  async function updateJob(id: string, data: Partial<Job>) {
     const jobIndex = jobs.value.findIndex(j => (j._id || j.id) === id)
     if (jobIndex === -1) return
 
-    jobs.value[jobIndex] = { ...jobs.value[jobIndex], ...data, isPending: true }
+    const currentJob = jobs.value[jobIndex]
+    if (!currentJob) return
 
-    const serverId = (jobs.value[jobIndex]._id || id) as string
-    const tempId = (jobs.value[jobIndex].id || id) as string
+    // Update UI immediately
+    jobs.value[jobIndex] = { ...currentJob, ...data, isPending: true }
 
-    const existingIndex = pendingUpdates.value.findIndex(u => u.tempId === tempId)
+    const serverId = (currentJob._id || id) as string
+    const tempId = (currentJob.id || id) as string
 
-    if (existingIndex !== -1) {
-      pendingUpdates.value[existingIndex].data = {
-        ...pendingUpdates.value[existingIndex].data,
-        ...data
+    // Try to sync immediately in background
+    if (!serverId.startsWith('temp-')) {
+      try {
+        const headers = await getAuthHeaders()
+
+        // ✅ Prepare data with metadata
+        const updateData = prepareJobDataForBackend({ id: serverId, ...data })
+
+        console.log('🚀 Immediately syncing job update with metadata:', updateData)
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/jobs`,
+          {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(updateData)
+          }
+        )
+
+        if (!response.ok) {
+          throw new Error('Failed to update job')
+        }
+
+        console.log('✅ Job update synced immediately!')
+
+        // Mark as not pending
+        if (jobs.value[jobIndex]) {
+          jobs.value[jobIndex]!.isPending = false
+        }
+
+        // Remove from pending updates if it was there
+        pendingUpdates.value = pendingUpdates.value.filter(u => u.tempId !== tempId)
+
+      } catch (err) {
+        console.error('❌ Failed to sync update immediately, will retry on manual sync:', err)
+
+        // Add to pending for manual sync retry
+        const existingIndex = pendingUpdates.value.findIndex(u => u.tempId === tempId)
+        if (existingIndex !== -1 && pendingUpdates.value[existingIndex]) {
+          pendingUpdates.value[existingIndex]!.data = {
+            ...pendingUpdates.value[existingIndex]!.data,
+            ...data
+          }
+        } else {
+          pendingUpdates.value.push({ id: serverId, tempId, data })
+        }
       }
     } else {
+      // Can't sync temp IDs yet, add to pending
       pendingUpdates.value.push({ id: serverId, tempId, data })
     }
   }
 
-  function deleteJob(id: string) {
+  async function deleteJob(id: string) {
     const job = jobs.value.find(j => (j._id || j.id) === id)
     if (!job) return
 
@@ -131,41 +349,79 @@ export const useJobStore = defineStore('job', () => {
     const tempId = job.id || id
     const jobIndex = jobs.value.findIndex(j => (j._id || j.id) === id)
 
+    // Remove from pending arrays
     pendingJobs.value = pendingJobs.value.filter(j => j.id !== tempId)
     pendingUpdates.value = pendingUpdates.value.filter(u => u.tempId !== tempId)
 
-    if (serverId && !serverId.startsWith('temp-')) {
-      pendingDeletes.value.push({ id: serverId })
+    // Remove from UI immediately
+    if (jobIndex !== -1) {
+      jobs.value.splice(jobIndex, 1)
     }
-
-    jobs.value.splice(jobIndex, 1)
     totalItems.value--
+
+    // Try to sync immediately in background
+    if (serverId && !serverId.startsWith('temp-')) {
+      try {
+        const headers = await getAuthHeaders()
+
+        console.log('🚀 Immediately syncing job deletion...')
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/jobs`,
+          {
+            method: 'DELETE',
+            headers,
+            body: JSON.stringify({ id: serverId })
+          }
+        )
+
+        if (!response.ok) {
+          throw new Error('Failed to delete job')
+        }
+
+        console.log('✅ Job deletion synced immediately!')
+
+      } catch (err) {
+        console.error('❌ Failed to sync deletion immediately, will retry on manual sync:', err)
+        pendingDeletes.value.push({ id: serverId })
+      }
+    }
   }
 
+  // Manual sync for failed operations only
   async function syncChanges() {
+    const headers = await getAuthHeaders()
     const idMap: Record<string, string> = {}
 
+    // Sync failed jobs
     for (const job of [...pendingJobs.value]) {
-      const tempId = job.id!
-      const postData: Partial<Job> = { ...job }
+      if (!job.id) continue
+      
+      const tempId = job.id
+      const postData = prepareJobDataForBackend(job)
       delete postData.isPending
       delete postData.id
       delete postData._id
       delete postData.tempId
 
       try {
-        const { data, error } = await supabase.functions.invoke('jobs', {
-          method: 'POST',
-          body: postData
-        })
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/jobs`,
+          {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(postData)
+          }
+        )
 
-        if (error) throw error
+        if (!response.ok) throw new Error('Failed to sync job')
 
+        const data = await response.json()
         idMap[tempId] = data._id
         pendingJobs.value = pendingJobs.value.filter(j => j.id !== tempId)
 
         const jobIndex = jobs.value.findIndex(j => j.id === tempId)
-        if (jobIndex !== -1) {
+        if (jobIndex !== -1 && jobs.value[jobIndex]) {
           jobs.value[jobIndex] = { ...data, isPending: false }
         }
       } catch (err) {
@@ -173,6 +429,7 @@ export const useJobStore = defineStore('job', () => {
       }
     }
 
+    // Update IDs in pending updates
     pendingUpdates.value = pendingUpdates.value.map(update => {
       if (idMap[update.tempId]) {
         return { ...update, id: idMap[update.tempId] as string }
@@ -180,16 +437,23 @@ export const useJobStore = defineStore('job', () => {
       return update
     })
 
+    // Sync failed updates
     for (const update of [...pendingUpdates.value]) {
       if (update.id.startsWith('temp-')) continue
 
       try {
-        const { error } = await supabase.functions.invoke('jobs', {
-          method: 'PATCH',
-          body: { id: update.id, ...update.data }
-        })
+        const updateData = prepareJobDataForBackend({ id: update.id, ...update.data })
 
-        if (error) throw error
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/jobs`,
+          {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(updateData)
+          }
+        )
+
+        if (!response.ok) throw new Error('Failed to update job')
 
         pendingUpdates.value = pendingUpdates.value.filter(u => u.tempId !== update.tempId)
 
@@ -200,19 +464,66 @@ export const useJobStore = defineStore('job', () => {
       }
     }
 
+    // Sync failed deletes
     for (const deletion of [...pendingDeletes.value]) {
       try {
-        const { error } = await supabase.functions.invoke('jobs', {
-          method: 'DELETE',
-          body: { id: deletion.id }
-        })
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/jobs`,
+          {
+            method: 'DELETE',
+            headers,
+            body: JSON.stringify({ id: deletion.id })
+          }
+        )
 
-        if (error) throw error
+        if (!response.ok) throw new Error('Failed to delete job')
 
         pendingDeletes.value = pendingDeletes.value.filter(d => d.id !== deletion.id)
       } catch (err) {
         console.error('Failed to sync job DELETE:', err)
       }
+    }
+
+    // Refresh view
+    if (activeSearchParams.value) {
+      await searchJobs(activeSearchParams.value)
+    } else {
+      await fetchJobs(currentPage.value)
+    }
+  }
+
+  async function exportJobs(format: ExportFormat) {
+    try {
+      const headers = await getAuthHeaders()
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/exportJobsData?format=${format}`,
+        { headers }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to export jobs')
+      }
+
+      const contentDisposition = response.headers.get('Content-Disposition')
+      const filenameParts = contentDisposition?.split('filename=')
+      const filename = filenameParts && filenameParts[1]
+        ? filenameParts[1].replace(/"/g, '')
+        : `job_applications_${new Date().toISOString().split('T')[0]}.${format}`
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      return { success: true, message: 'Jobs exported successfully!' }
+    } catch (err: any) {
+      return { success: false, message: err.message }
     }
   }
 
@@ -227,10 +538,13 @@ export const useJobStore = defineStore('job', () => {
     errorMessage,
     hasPendingChanges,
     pendingCount,
+    activeSearchParams,
     fetchJobs,
+    searchJobs,
     addJob,
     updateJob,
     deleteJob,
-    syncChanges
+    syncChanges,
+    exportJobs
   }
 })

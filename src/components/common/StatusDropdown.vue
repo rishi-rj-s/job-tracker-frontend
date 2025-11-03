@@ -11,7 +11,7 @@
           </span>
           <span v-else class="text-sm text-gray-500 italic">Select a status</span>
         </div>
-        <ChevronDown class="h-5 w-5 text-gray-400 flex-shrink-0 ml-2" />
+        <ChevronDown class="h-5 w-5 text-gray-400 shrink-0 ml-2" />
       </button>
 
       <div v-if="isOpen" class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-80 overflow-hidden flex flex-col">
@@ -45,8 +45,8 @@
                 </span>
                 <Check v-if="modelValue === key" class="h-4 w-4 text-blue-600" />
               </div>
-              <button v-if="!statusStore.fixedStatuses.includes(key)" type="button"
-                      @click.stop="deleteStatus(key)"
+              <button v-if="!statusStore.isDefaultStatus(key)" type="button"
+                      @click.stop="deleteStatusHandler(key)"
                       class="ml-2 text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition"
                       title="Delete Status">
                 <Trash2 class="h-4 w-4" />
@@ -62,8 +62,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ChevronDown, Check, Plus, Trash2 } from 'lucide-vue-next'
-import { useStatusStore } from '../stores/statusStore'
-import { useToast } from '../lib/composables/useToast'
+import { useStatusStore } from '@/stores/statusStore'
+import { useToast } from '@/composables/useToast'
 
 const props = defineProps<{
   modelValue: string
@@ -90,11 +90,17 @@ const filteredStatuses = computed(() => {
 const getStatusClass = (key: string) => {
   const classes: Record<string, string> = {
     'Applied': 'status-Applied-bg',
+    'applied': 'status-Applied-bg',
     'Screening': 'status-Screening-bg',
+    'screening': 'status-Screening-bg',
     'Interview': 'status-Interview-bg',
+    'interview': 'status-Interview-bg',
     'Offer': 'status-Offer-bg',
+    'offer': 'status-Offer-bg',
     'Rejected': 'status-Rejected-bg',
+    'rejected': 'status-Rejected-bg',
     'Closed': 'status-Closed-bg',
+    'closed': 'status-Closed-bg',
   }
   return classes[key] || 'status-Custom-bg'
 }
@@ -111,28 +117,38 @@ const selectStatus = (key: string) => {
   isOpen.value = false
 }
 
-const createStatus = () => {
+// ✅ FIX: Preserve original user input for name
+const createStatus = async () => {
   if (!searchQuery.value.trim()) return
 
-  const key = statusStore.createStatusKey(searchQuery.value)
-
-  if (statusStore.statuses[key]) {
-    showToast('Status already exists!', 'yellow')
+  const originalName = searchQuery.value.trim() // Keep original capitalization
+  const result = await statusStore.addStatus(originalName)
+  
+  if (!result.success) {
+    showToast(result.message || 'Failed to create status', 'red')
     return
   }
 
-  statusStore.addStatus(key, searchQuery.value)
-  emit('update:modelValue', key)
+  // Select the newly created status
+  emit('update:modelValue', result.key!)
   isOpen.value = false
-  showToast(`Status "${searchQuery.value}" created!`, 'green')
+  showToast(`Status "${originalName}" created! Click 'Sync Data' to save.`, 'blue')
 }
 
-const deleteStatus = (key: string) => {
-  if (!statusStore.deleteStatus(key)) {
-    showToast('Cannot delete fixed statuses.', 'red')
+const deleteStatusHandler = async (key: string) => {
+  const result = await statusStore.deleteStatus(key)
+  
+  if (!result.success) {
+    showToast(result.message || 'Cannot delete this status', 'red')
     return
   }
-  showToast('Status deleted. Sync to save changes.', 'orange')
+
+  // If deleted status was selected, reset to default
+  if (props.modelValue === key) {
+    emit('update:modelValue', 'applied')
+  }
+
+  showToast('Status deleted successfully!', 'green')
 }
 
 const handleClickOutside = (e: MouseEvent) => {
