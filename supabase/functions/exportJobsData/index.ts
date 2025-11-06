@@ -8,7 +8,8 @@ export type ExportFormat = 'csv' | 'xlsx' | 'pdf' | 'json'
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:4173',
-  'http://localhost:3000'
+  // Add your production domain here when deploying:
+  'https://apply-log-henna.vercel.app'
 ]
 
 function getCorsHeaders(origin: string | null) {
@@ -205,7 +206,6 @@ serve(async (req) => {
       }
     })
   } catch (error) {
-    console.error('❌ Export Error:', error)
     const status = (error.message?.includes('auth')) ? 401 : 400
     return new Response(JSON.stringify({
       error: error.message || 'Export failed',

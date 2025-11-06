@@ -6,8 +6,7 @@ const allowedOrigins = [
   'http://localhost:5173', // Development
   'http://localhost:4173',  // Alternative dev port
   // Add your production domain here when deploying:
-  // 'https://yourdomain.com',
-  // 'https://www.yourdomain.com'
+  'https://apply-log-henna.vercel.app'
 ]
 
 function getCorsHeaders(origin: string | null) {
@@ -91,8 +90,6 @@ serve(async (req) => {
 
       if (defaultError) throw defaultError
 
-      console.log(`📤 Returning ${defaultPlatforms?.length || 0} default platforms`)
-
       return new Response(JSON.stringify(defaultPlatforms || []), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -111,7 +108,6 @@ serve(async (req) => {
 
       if (userError) throw userError
 
-      console.log(`📤 Returning ${userPlatforms?.length || 0} custom platforms for user ${user.id}`)
 
       return new Response(JSON.stringify(userPlatforms || []), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -288,7 +284,6 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error('Platform Error:', error)
 
     const status = error.message === 'Unauthorized' || error.message.includes('authorization') ? 401 : 400
 

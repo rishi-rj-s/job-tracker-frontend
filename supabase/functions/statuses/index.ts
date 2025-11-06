@@ -1,7 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const allowedOrigins = ['http://localhost:5173', 'http://localhost:4173']
+const allowedOrigins = [
+  'http://localhost:5173', // Development
+  'http://localhost:4173',  // Alternative dev port
+  // Add your production domain here when deploying:
+  'https://apply-log-henna.vercel.app'
+]
 
 function getCorsHeaders(origin: string | null) {
   const isAllowed = origin && allowedOrigins.includes(origin)

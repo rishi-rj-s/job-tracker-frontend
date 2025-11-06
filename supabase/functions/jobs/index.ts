@@ -4,6 +4,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:4173',
+  // Add your production domain here when deploying:
+  'https://apply-log-henna.vercel.app'
 ]
 
 function getCorsHeaders(origin: string | null) {
@@ -52,7 +54,7 @@ async function getAuthenticatedUser(supabaseClient: any, authHeader: string | nu
   return user
 }
 
-// ✅ BACKEND NORMALIZATION - Same logic as frontend
+// BACKEND NORMALIZATION - Same logic as frontend
 function normalizeToKey(name: string): string {
   return name
     .toLowerCase()
@@ -61,14 +63,13 @@ function normalizeToKey(name: string): string {
     .replace(/^-|-$/g, '')
 }
 
-// ✅ NEW: Auto-save custom statuses and platforms with BOTH key and name
+// NEW: Auto-save custom statuses and platforms with BOTH key and name
 async function ensureCustomFieldsExist(
   supabaseClient: any,
   userId: string,
   statusData: { key?: string; name?: string } | undefined,
   platformsData: Array<{ key?: string; name?: string }>
 ) {
-  console.log('🔍 Checking custom fields...', { statusData, platformsData })
 
   // Get default statuses and platforms
   const { data: defaultStatuses } = await supabaseClient
@@ -82,7 +83,7 @@ async function ensureCustomFieldsExist(
   const defaultStatusKeys = new Set((defaultStatuses || []).map((s: any) => s.key))
   const defaultPlatformKeys = new Set((defaultPlatforms || []).map((p: any) => p.key))
 
-  // ✅ Handle status - use provided key/name or normalize from either
+  // Handle status - use provided key/name or normalize from either
   if (statusData) {
     let statusKey = statusData.key
     let statusName = statusData.name
@@ -97,7 +98,6 @@ async function ensureCustomFieldsExist(
     }
 
     if (statusKey && !defaultStatusKeys.has(statusKey)) {
-      console.log('💾 Auto-saving custom status:', { key: statusKey, name: statusName })
 
       const { error } = await supabaseClient
         .from('user_statuses')
@@ -108,14 +108,12 @@ async function ensureCustomFieldsExist(
         }, { onConflict: 'user_id,key' })
 
       if (error && !error.message.includes('duplicate')) {
-        console.error('❌ Failed to create custom status:', error)
       } else {
-        console.log('✅ Custom status saved:', statusName)
       }
     }
   }
 
-  // ✅ Handle platforms - use provided key/name or normalize from either
+  // Handle platforms - use provided key/name or normalize from either
   for (const platformData of platformsData) {
     let platformKey = platformData.key
     let platformName = platformData.name
@@ -130,7 +128,6 @@ async function ensureCustomFieldsExist(
     }
 
     if (platformKey && !defaultPlatformKeys.has(platformKey)) {
-      console.log('💾 Auto-saving custom platform:', { key: platformKey, name: platformName })
 
       const { error } = await supabaseClient
         .from('user_platforms')
@@ -141,9 +138,7 @@ async function ensureCustomFieldsExist(
         }, { onConflict: 'user_id,key' })
 
       if (error && !error.message.includes('duplicate')) {
-        console.error('❌ Failed to create custom platform:', error)
       } else {
-        console.log('✅ Custom platform saved:', platformName)
       }
     }
   }
@@ -303,7 +298,7 @@ serve(async (req) => {
       // Validate input
       validateJobData(body)
 
-      // ✅ NEW: Extract status and platform metadata
+      // NEW: Extract status and platform metadata
       const statusData = body.statusMetadata || { key: body.status, name: body.statusName }
       const platformsData = body.platformsMetadata || body.applicationPlatforms.map((key: string) => ({ key }))
 
@@ -374,7 +369,7 @@ serve(async (req) => {
         throw new Error('Job ID is required')
       }
 
-      // ✅ NEW: Extract status and platform metadata if provided
+      // NEW: Extract status and platform metadata if provided
       if (updates.status || updates.applicationPlatforms) {
         const statusData = updates.statusMetadata || { key: updates.status, name: updates.statusName }
         const platformsData = updates.platformsMetadata || (updates.applicationPlatforms || []).map((key: string) => ({ key }))
@@ -529,7 +524,6 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error('Error:', error)
 
     let status = 400
     if (error.message === 'Unauthorized' || error.message.includes('authorization')) {
