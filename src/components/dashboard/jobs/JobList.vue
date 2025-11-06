@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import JobRow from './JobRow.vue'
-import { useJobStore } from '../stores/jobStore'
+import { useJobStore } from '../../../stores/jobStore'
 
 const jobStore = useJobStore()
 </script>

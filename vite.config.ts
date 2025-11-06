@@ -15,7 +15,13 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': '/src'
+      '@': '/src',
+      '@components': '/src/components',
+      '@views':'/src/views',
+      '@lib':'/src/lib',
+      '@composables': '/src/composables',
+      '@stores': '/src/stores',
+      '@type': '/src/type'
     }
   }
 })
