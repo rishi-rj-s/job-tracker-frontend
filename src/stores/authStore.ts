@@ -23,7 +23,6 @@ export const useAuthStore = defineStore('auth', () => {
       })
     } catch (err: any) {
       error.value = err.message
-      console.error('Auth initialization error:', err)
     } finally {
       loading.value = false
     }

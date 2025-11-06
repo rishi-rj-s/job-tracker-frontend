@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <!-- Loading State -->
+    <!-- Loading State - ONLY on true initial load -->
     <div v-if="isInitialLoading" class="flex items-center justify-center min-h-[60vh]">
       <div class="text-center">
         <div class="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mb-4"></div>
@@ -9,7 +9,7 @@
       </div>
     </div>
 
-    <!-- Main Content - Only show when data is loaded -->
+    <!-- Main Content - Show immediately if data exists -->
     <template v-else>
       <!-- Page Header -->
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -17,20 +17,17 @@
           <h1 class="text-3xl font-bold text-gray-900">Applications</h1>
           <p class="text-gray-600 mt-1">Track and manage all your job applications</p>
         </div>
-        
+
         <div class="flex items-center gap-3">
           <!-- Pending Changes Indicator -->
-          <div v-if="jobStore.hasPendingChanges" 
-               class="flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+          <div v-if="jobStore.hasPendingChanges"
+            class="flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
             <RefreshCw class="h-4 w-4" />
             <span>{{ jobStore.pendingCount }} pending changes</span>
           </div>
 
           <!-- Sync Button -->
-          <button 
-            v-if="jobStore.hasPendingChanges"
-            @click="handleSync"
-            :disabled="syncStore.isSyncing"
+          <button v-if="jobStore.hasPendingChanges" @click="handleSync" :disabled="syncStore.isSyncing"
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50">
             <RefreshCw :class="['h-4 w-4', syncStore.isSyncing ? 'animate-spin' : '']" />
             {{ syncStore.isSyncing ? 'Syncing...' : 'Sync Data' }}
@@ -40,10 +37,8 @@
 
       <!-- Add Job Form Toggle Button & Form -->
       <div class="space-y-4">
-        <button
-          @click="showForm = !showForm"
-          class="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-md"
-        >
+        <button @click="showForm = !showForm"
+          class="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-md">
           <Plus class="h-5 w-5" />
           {{ showForm ? 'Hide Form' : 'Add New Application' }}
         </button>
@@ -58,8 +53,7 @@
 
       <!-- Stats Summary -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div v-for="(stat, index) in statusStats" :key="index"
-             class="bg-white rounded-lg p-4 border border-gray-200">
+        <div v-for="(stat, index) in statusStats" :key="index" class="bg-white rounded-lg p-4 border border-gray-200">
           <div class="text-2xl font-bold text-gray-900">{{ stat.count }}</div>
           <div class="text-sm text-gray-600">{{ stat.label }}</div>
         </div>
@@ -98,7 +92,7 @@ const statusStore = useStatusStore()
 const platformStore = usePlatformStore()
 
 const showForm = ref(false)
-const isInitialLoading = ref(true)
+const isInitialLoading = ref(false)
 
 const statusStats = computed(() => [
   { label: 'Total', count: jobStore.jobs.length },
@@ -111,29 +105,30 @@ const handleSync = async () => {
   await syncStore.syncAll()
 }
 
-onMounted(async () => {
-  console.log('🚀 Jobs page mounting - loading initial data...')
-  
+// Function to load data only when necessary
+const loadData = async () => {
+
+  if (jobStore.hasLoadedInitially) {
+    return
+  }
+
+  isInitialLoading.value = true
+
   try {
-    // Load statuses and platforms FIRST (required for forms)
     await Promise.all([
       statusStore.fetchStatuses(),
       platformStore.fetchPlatforms()
     ])
-    
-    console.log('✅ Statuses and platforms loaded')
-    console.log('📊 Statuses:', Object.keys(statusStore.statuses).length)
-    console.log('📊 Platforms:', Object.keys(platformStore.platforms).length)
-    
-    // Then load jobs
+
     await jobStore.fetchJobs(1)
-    
-    console.log('✅ Jobs loaded:', jobStore.jobs.length)
   } catch (error) {
-    console.error('❌ Error loading initial data:', error)
   } finally {
     isInitialLoading.value = false
   }
+}
+
+onMounted(async () => {
+  await loadData()
 })
 </script>
 

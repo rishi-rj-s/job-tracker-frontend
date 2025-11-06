@@ -7,7 +7,7 @@ NProgress.configure({ showSpinner: false })
 export function setupProgress(router: Router) {
   router.beforeEach((to, from, next) => {
     NProgress.start()
-    next() // ✅ explicitly continue navigation
+    next() // explicitly continue navigation
   })
 
   router.afterEach(() => {

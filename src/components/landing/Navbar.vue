@@ -4,11 +4,10 @@
       <div class="nav-content">
         <!-- Logo -->
         <div class="logo" @click="$router.push('/')">
-          <Briefcase class="logo-icon" />
+          <img src="@/assets/logo.svg" alt="ApplyLog Logo" class="logo-img" />
           <span class="logo-text">ApplyLog</span>
         </div>
-
-
+        
         <!-- Desktop Navigation -->
         <div class="nav-links desktop-nav">
           <a href="#features" @click.prevent="scrollToSection('features')" class="nav-link">

@@ -10,8 +10,8 @@ export interface SEOConfig {
 }
 
 export function useSEO(config: SEOConfig) {
-  const baseUrl = import.meta.env.VITE_APP_URL || 'https://yourapp.com'
-  const siteName = 'JobTracker'
+  const baseUrl = import.meta.env.VITE_APP_URL || 'https://localhost:5173'
+  const siteName = 'ApplyLog'
   
   const fullTitle = config.title.includes(siteName) 
     ? config.title 
@@ -22,10 +22,10 @@ export function useSEO(config: SEOConfig) {
     meta: [
       // Basic SEO
       { name: 'description', content: config.description },
-      { name: 'keywords', content: config.keywords || 'job tracker, application tracker' },
+      { name: 'keywords', content: config.keywords || 'job application tracker, apply log, application logger, job search organizer' },
       { name: 'author', content: siteName },
       
-      // Open Graph
+      // Open Graph (Facebook, LinkedIn)
       { property: 'og:site_name', content: siteName },
       { property: 'og:title', content: fullTitle },
       { property: 'og:description', content: config.description },
@@ -67,45 +67,9 @@ export function useSEO(config: SEOConfig) {
             '@type': 'Offer',
             'price': '0',
             'priceCurrency': 'USD'
-          },
-          'aggregateRating': {
-            '@type': 'AggregateRating',
-            'ratingValue': '4.9',
-            'ratingCount': '10000'
           }
         })
       }
     ]
   })
 }
-
-// robots.txt content (create at /public/robots.txt)
-export const robotsTxt = `User-agent: *
-Allow: /
-Disallow: /dashboard
-Disallow: /admin
-
-Sitemap: https://yourapp.com/sitemap.xml`
-
-// sitemap.xml content (create at /public/sitemap.xml)
-export const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://yourapp.com/</loc>
-    <lastmod>2025-01-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://yourapp.com/login</loc>
-    <lastmod>2025-01-01</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://yourapp.com/signup</loc>
-    <lastmod>2025-01-01</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-</urlset>`

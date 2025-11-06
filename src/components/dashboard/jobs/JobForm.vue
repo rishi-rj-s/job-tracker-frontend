@@ -103,7 +103,7 @@ const formData = ref<Job>({
   jobLink: '',
   salary: '',
   location: '',
-  status: 'applied', // Use lowercase default
+  status: 'applied',
   nextActionDate: '',
   notes: '',
   applicationPlatforms: []
@@ -111,31 +111,29 @@ const formData = ref<Job>({
 
 const handleSubmit = () => {
   if (!formData.value.jobTitle || !formData.value.company || !formData.value.dateApplied) {
-    showToast('Please fill in Job Title, Company, and Date Applied.', 'red')
+    showToast('Please fill in Job Title, Company, and Date Applied', 'red')
     return
   }
 
   if (!formData.value.applicationPlatforms || formData.value.applicationPlatforms.length === 0) {
-    showToast('Please select at least one application platform.', 'red')
+    showToast('Please select at least one application platform', 'red')
     return
   }
 
   // Check if stores have data
   if (Object.keys(statusStore.statuses).length === 0) {
-    showToast('Status data not loaded. Please refresh the page.', 'red')
-    console.error('❌ Status store is empty!')
+    showToast('Status data not loaded. Please refresh the page', 'red')
     return
   }
 
   if (Object.keys(platformStore.platforms).length === 0) {
-    showToast('Platform data not loaded. Please refresh the page.', 'red')
-    console.error('❌ Platform store is empty!')
+    showToast('Platform data not loaded. Please refresh the page', 'red')
     return
   }
 
   try {
     jobStore.addJob(formData.value)
-    showToast("Application logged!", 'blue')
+    showToast('Application logged successfully!', 'green')
 
     // Reset form
     formData.value = {
@@ -154,8 +152,7 @@ const handleSubmit = () => {
     // Emit submitted event to close form
     emit('submitted')
   } catch (error) {
-    console.error('Error adding job:', error)
-    showToast('Failed to add application. Please try again.', 'red')
+    showToast('Failed to add application. Please try again', 'red')
   }
 }
 </script>

@@ -6,9 +6,15 @@ import { supabase } from '@lib/supabase'
 export const usePlatformStore = defineStore('platform', () => {
   // Store platforms as Record<key, name> for easy lookup
   const platforms = ref<Record<string, string>>({})
-  
+
+  // NEW: Flag to track if initial load has completed
+  const hasLoadedInitially = ref(false)
+
   // Track pending additions that need to be synced
   const pendingPlatforms = ref<Array<{ key: string; name: string }>>([])
+  
+  // Track pending deletions that need to be synced
+  const pendingDeletes = ref<string[]>([])
   
   // Track which platforms are defaults (can't be deleted)
   const defaultPlatformKeys = ref<string[]>([])
@@ -23,7 +29,11 @@ export const usePlatformStore = defineStore('platform', () => {
   }
 
   // Fetch all platforms (default + user custom) with default-first strategy
-  async function fetchPlatforms() {
+  async function fetchPlatforms(force : boolean = false) {
+    if (hasLoadedInitially.value && !force) {
+    return { success: true }
+  }
+
     try {
       const headers = await getAuthHeaders()
       
@@ -39,7 +49,6 @@ export const usePlatformStore = defineStore('platform', () => {
 
       const defaultData: Platform[] = await defaultResponse.json()
       
-      console.log('📥 Default platforms fetched:', defaultData)
 
       // Clear and load defaults first
       platforms.value = {}
@@ -51,7 +60,6 @@ export const usePlatformStore = defineStore('platform', () => {
         defaultPlatformKeys.value.push(p.key)
       })
 
-      console.log('✅ Default platforms loaded:', Object.keys(platforms.value).length)
 
       // Step 2: Fetch and merge user custom platforms
       const customResponse = await fetch(
@@ -62,7 +70,6 @@ export const usePlatformStore = defineStore('platform', () => {
       if (customResponse.ok) {
         const customData: Platform[] = await customResponse.json()
         
-        console.log('📥 Custom platforms fetched:', customData)
 
         // Merge custom platforms (these will override defaults if same key)
         customData.forEach((p: Platform) => {
@@ -70,22 +77,17 @@ export const usePlatformStore = defineStore('platform', () => {
           // Don't add to defaultPlatformKeys - these are custom
         })
 
-        console.log('✅ Total platforms after merge:', Object.keys(platforms.value).length)
-        console.log('📋 All platform keys:', Object.keys(platforms.value))
-        console.log('🔒 Default platform keys:', defaultPlatformKeys.value)
       } else {
-        console.log('ℹ️ No custom platforms or error fetching them')
       }
-      
+      hasLoadedInitially.value = true
       return { success: true }
     } catch (err: any) {
-      console.error('❌ Error fetching platforms:', err)
       return { success: false, message: err.message }
     }
   }
 
-  // ✅ FIX: Add a new custom platform with ORIGINAL name preserved
-  async function addPlatform(name: string) {
+  // Add a new custom platform with ORIGINAL name preserved
+  async function addPlatform(name: string): Promise<{ success: boolean; message?: string; key?: string; name?: string }> {
     const originalName = name.trim() // Preserve original capitalization
     const key = createPlatformKey(originalName) // Generate normalized key
     
@@ -98,7 +100,6 @@ export const usePlatformStore = defineStore('platform', () => {
     platforms.value[key] = originalName
     pendingPlatforms.value.push({ key, name: originalName })
 
-    console.log('➕ Platform added optimistically:', { key, name: originalName })
     return { success: true, key, name: originalName }
   }
 
@@ -130,9 +131,7 @@ export const usePlatformStore = defineStore('platform', () => {
           p => p.key !== platform.key
         )
 
-        console.log('✅ Platform synced:', platform.name)
       } catch (err) {
-        console.error('❌ Failed to sync platform:', platform.name, err)
         // Keep in pending for retry
       }
     }
@@ -141,16 +140,25 @@ export const usePlatformStore = defineStore('platform', () => {
     await fetchPlatforms()
   }
 
-  // Delete a custom platform
-  async function deletePlatform(key: string) {
+  // Delete a custom platform - OPTIMISTIC
+  async function deletePlatform(key: string): Promise<{ success: boolean; message?: string; requiresSync?: boolean }> {
     // Check if it's a default platform
     if (defaultPlatformKeys.value.includes(key)) {
       return { success: false, message: 'Cannot delete default platform' }
     }
 
+    // OPTIMISTIC: Remove from UI immediately
+    const originalName = platforms.value[key]
+    delete platforms.value[key]
+    
+    // Also remove from pending additions if it's there
+    pendingPlatforms.value = pendingPlatforms.value.filter(p => p.key !== key)
+
+    // Try to sync immediately in background
     try {
       const headers = await getAuthHeaders()
       
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/platforms`,
         {
@@ -161,21 +169,49 @@ export const usePlatformStore = defineStore('platform', () => {
       )
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete platform')
+        throw new Error('Failed to delete platform')
       }
 
-      // Remove from local store
-      delete platforms.value[key]
-      
-      // Also remove from pending if it's there
-      pendingPlatforms.value = pendingPlatforms.value.filter(p => p.key !== key)
-      
-      console.log('✅ Platform deleted:', key)
       return { success: true }
+      
     } catch (err: any) {
-      console.error('❌ Error deleting platform:', err)
-      return { success: false, message: err.message }
+      
+      // On failure: restore and add to pending deletes
+      if (originalName) {
+        platforms.value[key] = originalName
+      }
+      pendingDeletes.value.push(key)
+      
+      return { success: true, requiresSync: true }
+    }
+  }
+
+  // Sync pending deletions to backend
+  async function syncDeletes() {
+    const headers = await getAuthHeaders()
+
+    for (const key of [...pendingDeletes.value]) {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/platforms`,
+          {
+            method: 'DELETE',
+            headers,
+            body: JSON.stringify({ key })
+          }
+        )
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to delete platform')
+        }
+
+        // Remove from pending on success
+        pendingDeletes.value = pendingDeletes.value.filter(k => k !== key)
+
+      } catch (err) {
+        // Keep in pending for retry
+      }
     }
   }
 
@@ -195,11 +231,14 @@ export const usePlatformStore = defineStore('platform', () => {
 
   return {
     platforms,
+    hasLoadedInitially,
     pendingPlatforms,
+    pendingDeletes,
     defaultPlatformKeys,
     fetchPlatforms,
     addPlatform,
     syncPlatforms,
+    syncDeletes,
     deletePlatform,
     createPlatformKey,
     isDefaultPlatform

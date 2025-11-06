@@ -10,6 +10,12 @@ export const useStatusStore = defineStore('status', () => {
   // Track pending additions that need to be synced
   const pendingStatuses = ref<Array<{ key: string; name: string }>>([])
   
+  // NEW: Flag to track if initial load has completed
+  const hasLoadedInitially = ref(false)
+
+  // Track pending deletions that need to be synced
+  const pendingDeletes = ref<string[]>([])
+  
   // Track which statuses are defaults (can't be deleted)
   const defaultStatusKeys = ref<string[]>([])
 
@@ -23,7 +29,11 @@ export const useStatusStore = defineStore('status', () => {
   }
 
   // Fetch all statuses (default + user custom) with default-first strategy
-  async function fetchStatuses() {
+  async function fetchStatuses(force : boolean = false) {
+
+    if (hasLoadedInitially.value && !force) {
+    return { success: true }
+  }
     try {
       const headers = await getAuthHeaders()
       
@@ -39,7 +49,6 @@ export const useStatusStore = defineStore('status', () => {
 
       const defaultData: Status[] = await defaultResponse.json()
       
-      console.log('📥 Default statuses fetched:', defaultData)
 
       // Clear and load defaults first
       statuses.value = {}
@@ -51,7 +60,6 @@ export const useStatusStore = defineStore('status', () => {
         defaultStatusKeys.value.push(s.key)
       })
 
-      console.log('✅ Default statuses loaded:', Object.keys(statuses.value).length)
 
       // Step 2: Fetch and merge user custom statuses
       const customResponse = await fetch(
@@ -62,7 +70,6 @@ export const useStatusStore = defineStore('status', () => {
       if (customResponse.ok) {
         const customData: Status[] = await customResponse.json()
         
-        console.log('📥 Custom statuses fetched:', customData)
 
         // Merge custom statuses (these will override defaults if same key)
         customData.forEach((s: Status) => {
@@ -70,22 +77,17 @@ export const useStatusStore = defineStore('status', () => {
           // Don't add to defaultStatusKeys - these are custom
         })
 
-        console.log('✅ Total statuses after merge:', Object.keys(statuses.value).length)
-        console.log('📋 All status keys:', Object.keys(statuses.value))
-        console.log('🔒 Default status keys:', defaultStatusKeys.value)
       } else {
-        console.log('ℹ️ No custom statuses or error fetching them')
       }
-      
+      hasLoadedInitially.value = true
       return { success: true }
     } catch (err: any) {
-      console.error('❌ Error fetching statuses:', err)
       return { success: false, message: err.message }
     }
   }
 
-  // ✅ FIX: Add a new custom status with ORIGINAL name preserved
-  async function addStatus(name: string) {
+  // Add a new custom status with ORIGINAL name preserved
+  async function addStatus(name: string): Promise<{ success: boolean; message?: string; key?: string; name?: string }> {
     const originalName = name.trim() // Preserve original capitalization
     const key = createStatusKey(originalName) // Generate normalized key
     
@@ -98,7 +100,6 @@ export const useStatusStore = defineStore('status', () => {
     statuses.value[key] = originalName
     pendingStatuses.value.push({ key, name: originalName })
 
-    console.log('➕ Status added optimistically:', { key, name: originalName })
     return { success: true, key, name: originalName }
   }
 
@@ -130,9 +131,7 @@ export const useStatusStore = defineStore('status', () => {
           s => s.key !== status.key
         )
 
-        console.log('✅ Status synced:', status.name)
       } catch (err) {
-        console.error('❌ Failed to sync status:', status.name, err)
         // Keep in pending for retry
       }
     }
@@ -141,16 +140,25 @@ export const useStatusStore = defineStore('status', () => {
     await fetchStatuses()
   }
 
-  // Delete a custom status
-  async function deleteStatus(key: string) {
+  // Delete a custom status - OPTIMISTIC
+  async function deleteStatus(key: string): Promise<{ success: boolean; message?: string; requiresSync?: boolean }> {
     // Check if it's a default status
     if (defaultStatusKeys.value.includes(key)) {
       return { success: false, message: 'Cannot delete default status' }
     }
 
+    // OPTIMISTIC: Remove from UI immediately
+    const originalName = statuses.value[key]
+    delete statuses.value[key]
+    
+    // Also remove from pending additions if it's there
+    pendingStatuses.value = pendingStatuses.value.filter(s => s.key !== key)
+
+    // Try to sync immediately in background
     try {
       const headers = await getAuthHeaders()
       
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/statuses`,
         {
@@ -161,21 +169,49 @@ export const useStatusStore = defineStore('status', () => {
       )
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete status')
+        throw new Error('Failed to delete status')
       }
 
-      // Remove from local store
-      delete statuses.value[key]
-      
-      // Also remove from pending if it's there
-      pendingStatuses.value = pendingStatuses.value.filter(s => s.key !== key)
-      
-      console.log('✅ Status deleted:', key)
       return { success: true }
+      
     } catch (err: any) {
-      console.error('❌ Error deleting status:', err)
-      return { success: false, message: err.message }
+      
+      // On failure: restore and add to pending deletes
+      if (originalName) {
+        statuses.value[key] = originalName
+      }
+      pendingDeletes.value.push(key)
+      
+      return { success: true, requiresSync: true }
+    }
+  }
+
+  // Sync pending deletions to backend
+  async function syncDeletes() {
+    const headers = await getAuthHeaders()
+
+    for (const key of [...pendingDeletes.value]) {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/statuses`,
+          {
+            method: 'DELETE',
+            headers,
+            body: JSON.stringify({ key })
+          }
+        )
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to delete status')
+        }
+
+        // Remove from pending on success
+        pendingDeletes.value = pendingDeletes.value.filter(k => k !== key)
+
+      } catch (err) {
+        // Keep in pending for retry
+      }
     }
   }
 
@@ -195,11 +231,14 @@ export const useStatusStore = defineStore('status', () => {
 
   return {
     statuses,
+    hasLoadedInitially,
     pendingStatuses,
+    pendingDeletes,
     defaultStatusKeys,
     fetchStatuses,
     addStatus,
     syncStatuses,
+    syncDeletes,
     deleteStatus,
     createStatusKey,
     isDefaultStatus

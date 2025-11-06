@@ -2,10 +2,11 @@
   <div class="relative" ref="dropdownRef">
     <button
       @click="isOpen = !isOpen"
-      class="hidden sm:flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+      :disabled="isExporting"
+      class="hidden sm:flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      <Download class="h-4 w-4" />
-      Export
+      <Download :class="['h-4 w-4', isExporting && 'animate-bounce']" />
+      <span>{{ isExporting ? 'Exporting...' : 'Export' }}</span>
       <ChevronDown class="h-4 w-4" />
     </button>
 
@@ -15,28 +16,32 @@
     >
       <button
         @click="handleExport('csv')"
-        class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+        :disabled="isExporting"
+        class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         <FileSpreadsheet class="h-4 w-4" />
         Export as CSV
       </button>
       <button
         @click="handleExport('xlsx')"
-        class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+        :disabled="isExporting"
+        class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         <FileSpreadsheet class="h-4 w-4" />
         Export as Excel
       </button>
       <button
         @click="handleExport('pdf')"
-        class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+        :disabled="isExporting"
+        class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         <FileText class="h-4 w-4" />
         Export as PDF
       </button>
       <button
         @click="handleExport('json')"
-        class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+        :disabled="isExporting"
+        class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         <FileJson class="h-4 w-4" />
         Export as JSON
@@ -55,16 +60,24 @@ const jobStore = useJobStore()
 const { showToast } = useToast()
 
 const isOpen = ref(false)
+const isExporting = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 
 const handleExport = async (format: 'csv' | 'xlsx' | 'pdf' | 'json') => {
   isOpen.value = false
+  isExporting.value = true
+  
+  // Show loading toast
+  showToast(`Preparing ${format.toUpperCase()} export...`, 'blue')
+  
   const result = await jobStore.exportJobs(format)
   
+  isExporting.value = false
+  
   if (result.success) {
-    showToast(result.message || 'Export successful!', 'green')
+    showToast(result.message || `${format.toUpperCase()} exported successfully!`, 'green')
   } else {
-    showToast(result.message || 'Export failed', 'red')
+    showToast(result.message || 'Export failed. Please try again.', 'red')
   }
 }
 

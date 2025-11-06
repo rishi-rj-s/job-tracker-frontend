@@ -20,9 +20,7 @@ const authLoading = ref(true)
 onMounted(async () => {
   try {
     await authStore.initialize()
-    console.log('✅ Auth initialized:', authStore.isAuthenticated ? 'Logged in' : 'Guest')
   } catch (error) {
-    console.error('❌ Auth initialization failed:', error)
   } finally {
     authLoading.value = false
   }
@@ -30,5 +28,16 @@ onMounted(async () => {
 </script>
 
 <style>
-/* Global styles if needed */
+.logo-img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  display: block;
+  transition: transform 0.2s ease;
+  filter: drop-shadow(0 0 2px rgba(167, 139, 250, 0.4));
+}
+
+.logo:hover .logo-img {
+  transform: scale(1.25);
+}
 </style>

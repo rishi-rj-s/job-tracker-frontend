@@ -25,10 +25,6 @@
           </div>
           <div class="feature-item">
             <Check class="icon" />
-            <span>No Sign Up Required</span>
-          </div>
-          <div class="feature-item">
-            <Check class="icon" />
             <span>Your Data, Your Control</span>
           </div>
         </div>

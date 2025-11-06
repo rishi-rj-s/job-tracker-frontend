@@ -48,7 +48,7 @@ const pageTitle = computed(() => {
   if (route.path.includes('/calendar')) return 'My Calendar'
   if (route.path.includes('/analytics')) return 'My Analytics'
   if (route.path.includes('/contacts')) return 'My Contacts'
-  return 'JobTracker'
+  return 'ApplyLog'
 })
 
 // Only show export button on Jobs page

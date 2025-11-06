@@ -7,7 +7,7 @@ const routes: RouteRecordRaw[] = [
     name: 'landing',
     component: () => import('@views/Landing.vue'),
     meta: { 
-      title: 'JobTracker - Track Your Job Applications Like a Pro',
+      title: 'ApplyLog - Log Your Job Applications Like a Pro',
     }
   },
   {
@@ -15,7 +15,7 @@ const routes: RouteRecordRaw[] = [
     name: 'login',
     component: () => import('@views/Login.vue'),
     meta: { 
-      title: 'Login - JobTracker',
+      title: 'Login - ApplyLog',
       requiresGuest: true 
     }
   },
@@ -24,7 +24,7 @@ const routes: RouteRecordRaw[] = [
     name: 'signup',
     component: () => import('@views/Signup.vue'),
     meta: { 
-      title: 'Sign Up - JobTracker',
+      title: 'Sign Up - ApplyLog',
       requiresGuest: true 
     }
   },
@@ -41,7 +41,7 @@ const routes: RouteRecordRaw[] = [
     name: 'dashboard',
     component: () => import('@views/Dashboard.vue'),
     meta: { 
-      title: 'Dashboard - JobTracker',
+      title: 'Dashboard - ApplyLog',
       requiresAuth: true 
     },
     children: [
@@ -50,7 +50,7 @@ const routes: RouteRecordRaw[] = [
         name: 'dashboard-home',
         component: () => import('@components/dashboard/home/DashboardHome.vue'),
         meta: { 
-          title: 'Dashboard - JobTracker'
+          title: 'Dashboard - ApplyLog'
         }
       },
       {
@@ -58,7 +58,7 @@ const routes: RouteRecordRaw[] = [
         name: 'jobs-applied',
         component: () => import('@views/Jobs.vue'),
         meta: { 
-          title: 'My Applications - JobTracker'
+          title: 'My Applications - ApplyLog'
         }
       },
       {
@@ -66,7 +66,7 @@ const routes: RouteRecordRaw[] = [
         name: 'calendar',
         component: () => import('@components/dashboard/calendar/CalendarPage.vue'),
         meta: { 
-          title: 'Calendar - JobTracker'
+          title: 'Calendar - ApplyLog'
         }
       },
       {
@@ -74,7 +74,7 @@ const routes: RouteRecordRaw[] = [
         name: 'analytics',
         component: () => import('@components/dashboard/analytics/AnalyticsPage.vue'),
         meta: { 
-          title: 'Analytics - JobTracker'
+          title: 'Analytics - ApplyLog'
         }
       },
       {
@@ -82,7 +82,7 @@ const routes: RouteRecordRaw[] = [
         name: 'contacts',
         component: () => import('@components/dashboard/contacts/ContactsPage.vue'),
         meta: { 
-          title: 'Contacts - JobTracker'
+          title: 'Contacts - ApplyLog'
         }
       }
     ]
@@ -119,7 +119,7 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
   // Set page title
-  document.title = (to.meta.title as string) || 'JobTracker'
+  document.title = (to.meta.title as string) || 'ApplyLog'
 
   // Wait for auth initialization on first load
   if (authStore.loading) {
@@ -138,14 +138,12 @@ router.beforeEach(async (to, from, next) => {
 
   // Redirect authenticated users away from guest pages
   if (requiresGuest && isAuthenticated) {
-    console.log('🔒 Redirecting authenticated user away from guest page')
     next({ name: 'dashboard-home' })
     return
   }
 
   // Redirect unauthenticated users to login
   if (requiresAuth && !isAuthenticated) {
-    console.log('🔒 Redirecting unauthenticated user to login')
     next({ 
       name: 'login',
       query: { redirect: to.fullPath }
@@ -159,7 +157,6 @@ router.beforeEach(async (to, from, next) => {
 // Handle auth callback redirects
 router.afterEach((to, from) => {
   if (import.meta.env.DEV) {
-    console.log(`📍 Navigated: ${from.path} → ${to.path}`)
   }
 })
 

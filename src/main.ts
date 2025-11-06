@@ -21,9 +21,9 @@ app.use(head)
 app.mount('#app')
 
 // Development logging
-if (import.meta.env.DEV) {
-  console.log('🚀 JobTracker App Initialized')
-  console.log('📍 Environment:', import.meta.env.MODE)
-  console.log('🔑 Supabase URL:', import.meta.env.VITE_SUPABASE_URL ? '✅ Set' : '❌ Missing')
-  console.log('🔑 Supabase Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing')
-}
+// if (import.meta.env.DEV) {
+//   console.log('🚀 ApplyLog App Initialized')
+//   console.log('📍 Environment:', import.meta.env.MODE)
+//   console.log('🔑 Supabase URL:', import.meta.env.VITE_SUPABASE_URL ? '✅ Set' : '❌ Missing')
+//   console.log('🔑 Supabase Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing')
+// }

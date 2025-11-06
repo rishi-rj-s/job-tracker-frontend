@@ -64,16 +64,24 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuthForm } from '@/composables/useAuthForm'
+import { useToast } from '@/composables/useToast'
 import AuthInput from './AuthInput.vue'
 import AlertMessage from './AlertMessage.vue'
 import GoogleButton from './GoogleButton.vue'
 
 const email = ref('')
 const password = ref('')
+const { showToast } = useToast()
 
 const { loading, errorMessage, handleLoginSubmit, handleGoogleAuth } = useAuthForm()
 
 const handleSubmit = async () => {
-  await handleLoginSubmit(email.value, password.value)
+  const success = await handleLoginSubmit(email.value, password.value)
+  
+  if (success) {
+    showToast('Welcome back! Successfully signed in.', 'green')
+  } else {
+    showToast(errorMessage.value || 'Sign in failed. Please try again.', 'red')
+  }
 }
 </script>

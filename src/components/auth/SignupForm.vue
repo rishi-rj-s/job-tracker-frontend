@@ -68,7 +68,7 @@
         <GoogleButton
           text="Sign up with Google"
           :disabled="loading"
-          @click="handleGoogleAuth"
+          @click="handleGoogleAuthWithToast"
         />
       </div>
     </div>
@@ -85,6 +85,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuthForm } from '@/composables/useAuthForm'
+import { useToast } from '@/composables/useToast'
 import AuthInput from './AuthInput.vue'
 import AlertMessage from './AlertMessage.vue'
 import GoogleButton from './GoogleButton.vue'
@@ -93,10 +94,28 @@ const fullName = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const { showToast } = useToast()
 
 const { loading, errorMessage, successMessage, handleSignupSubmit, handleGoogleAuth } = useAuthForm()
 
 const handleSubmit = async () => {
-  await handleSignupSubmit(email.value, password.value, confirmPassword.value, fullName.value)
+  const success = await handleSignupSubmit(email.value, password.value, confirmPassword.value, fullName.value)
+  
+  if (success) {
+    if (successMessage.value.includes('verify')) {
+      showToast('Account created! Please check your email to verify.', 'blue')
+    } else {
+      showToast('Account created successfully! Welcome aboard!', 'green')
+    }
+  } else {
+    showToast(errorMessage.value || 'Sign up failed. Please try again.', 'red')
+  }
+}
+
+const handleGoogleAuthWithToast = async () => {
+  const success = await handleGoogleAuth()
+  if (success) {
+    showToast('Redirecting to Google...', 'blue')
+  }
 }
 </script>

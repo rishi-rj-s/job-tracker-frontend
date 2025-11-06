@@ -22,7 +22,6 @@ export default defineConfig({
       '@composables': '/src/composables',
       '@stores': '/src/stores',
       '@type': '/src/type'
-
     }
   }
 })
