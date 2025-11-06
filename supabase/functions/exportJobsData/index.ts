@@ -1,5 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
+import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1'
+
+export type ExportFormat = 'csv' | 'xlsx' | 'pdf' | 'json'
 
 const allowedOrigins = [
   'http://localhost:5173',
@@ -19,25 +23,18 @@ function getCorsHeaders(origin: string | null) {
 }
 
 async function getAuthenticatedUser(supabaseClient: any, authHeader: string | null) {
-  if (!authHeader) {
-    throw new Error('Missing authorization header')
-  }
-
+  if (!authHeader) throw new Error('Missing authorization header')
   const token = authHeader.replace('Bearer ', '')
   const { data: { user }, error } = await supabaseClient.auth.getUser(token)
-
-  if (error || !user) {
-    throw new Error('Unauthorized')
-  }
-
+  if (error || !user) throw new Error('Unauthorized')
   return user
 }
 
-function formatDateForExport(dateStr: string | null): string {
+function formatDate(dateStr: string | null): string {
   if (!dateStr) return ''
   try {
-    const date = new Date(dateStr)
-    return date.toISOString().split('T')[0] // YYYY-MM-DD format
+    const d = new Date(dateStr)
+    return d.toISOString().split('T')[0]
   } catch {
     return ''
   }
@@ -45,132 +42,124 @@ function formatDateForExport(dateStr: string | null): string {
 
 function escapeCSV(value: any): string {
   if (value === null || value === undefined) return ''
-  
   const str = String(value)
-  
-  // If contains comma, quote, or newline, wrap in quotes and escape quotes
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`
-  }
-  
-  return str
+  return (str.includes(',') || str.includes('"') || str.includes('\n'))
+    ? `"${str.replace(/"/g, '""')}"`
+    : str
 }
 
+function transformJob(job: any) {
+  return {
+    'Job Title': job.job_title || '',
+    'Company Name': job.company || '',
+    'Date Applied': formatDate(job.date_applied),
+    'Status': job.status || '',
+    'Job Link (URL)': job.job_link || '',
+    'Salary/Compensation': job.salary || '',
+    'Location': job.location || '',
+    'Next Action Date': formatDate(job.next_action_date),
+    'Application Platforms': job.application_platforms?.join('; ') || ''
+  }
+}
+
+// ---------------- CSV ----------------
 function generateCSV(jobs: any[]): string {
-  // CSV Headers
   const headers = [
     'Job Title',
-    'Company',
+    'Company Name',
     'Date Applied',
     'Status',
+    'Job Link (URL)',
+    'Salary/Compensation',
     'Location',
-    'Salary',
-    'Job Link',
-    'Platforms',
     'Next Action Date',
-    'Notes',
-    'Created At',
-    'Updated At'
+    'Application Platforms'
   ]
 
-  // Start with header row
   let csv = headers.join(',') + '\n'
-
-  // Add data rows
-  for (const job of jobs) {
-    const row = [
-      escapeCSV(job.job_title),
-      escapeCSV(job.company),
-      escapeCSV(formatDateForExport(job.date_applied)),
-      escapeCSV(job.status),
-      escapeCSV(job.location),
-      escapeCSV(job.salary),
-      escapeCSV(job.job_link),
-      escapeCSV(job.application_platforms?.join('; ') || ''),
-      escapeCSV(formatDateForExport(job.next_action_date)),
-      escapeCSV(job.notes),
-      escapeCSV(formatDateForExport(job.created_at)),
-      escapeCSV(formatDateForExport(job.updated_at))
-    ]
-    
+  for (const job of jobs.map(transformJob)) {
+    const row = headers.map(h => escapeCSV(job[h]))
     csv += row.join(',') + '\n'
   }
-
   return csv
 }
 
+// ---------------- JSON ----------------
 function generateJSON(jobs: any[]): string {
-  // Transform to more readable format
-  const formatted = jobs.map(job => ({
-    jobTitle: job.job_title,
-    company: job.company,
-    dateApplied: formatDateForExport(job.date_applied),
-    status: job.status,
-    location: job.location,
-    salary: job.salary,
-    jobLink: job.job_link,
-    platforms: job.application_platforms || [],
-    nextActionDate: formatDateForExport(job.next_action_date),
-    notes: job.notes,
-    createdAt: job.created_at,
-    updatedAt: job.updated_at
-  }))
-
+  const formatted = jobs.map(transformJob)
   return JSON.stringify(formatted, null, 2)
 }
 
+// ---------------- XLSX ----------------
+async function generateXLSX(jobs: any[]): Promise<Uint8Array> {
+  const worksheet = XLSX.utils.json_to_sheet(jobs.map(transformJob))
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Job Applications')
+  const buffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' })
+  return new Uint8Array(buffer)
+}
+
+// ---------------- PDF ----------------
+async function generatePDF(jobs: any[]): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create()
+  const page = pdfDoc.addPage([600, 800])
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  const fontSize = 10
+  const lineHeight = 14
+
+  let y = 780
+  page.drawText('Job Applications Export', { x: 40, y, size: 14, font })
+  y -= 25
+
+  const headers = [
+    'Job Title', 'Company Name', 'Date Applied', 'Status', 'Job Link (URL)',
+    'Salary/Compensation', 'Location', 'Next Action Date', 'Application Platforms'
+  ]
+
+  for (const job of jobs.map(transformJob)) {
+    for (const header of headers) {
+      const text = `${header}: ${job[header] || ''}`
+      page.drawText(text.slice(0, 90), { x: 40, y, size: fontSize, font, color: rgb(0, 0, 0) })
+      y -= lineHeight
+      if (y < 40) {
+        y = 780
+        page = pdfDoc.addPage([600, 800])
+      }
+    }
+    y -= 10
+  }
+
+  return await pdfDoc.save()
+}
+
+// ---------------- MAIN HANDLER ----------------
 serve(async (req) => {
   const origin = req.headers.get('origin')
   const corsHeaders = getCorsHeaders(origin)
-
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
     const authHeader = req.headers.get('authorization')
-    if (!authHeader) {
-      throw new Error('Missing authorization header')
-    }
-
-    console.log('📥 Export request received')
-    console.log('Request URL:', req.url)
-    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: {
-            Authorization: authHeader,
-          },
-        },
-      }
+      { global: { headers: { Authorization: authHeader ?? '' } } }
     )
-
     const user = await getAuthenticatedUser(supabaseClient, authHeader)
-    console.log('✅ User authenticated:', user.id)
 
-    if (req.method !== 'GET') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-        status: 405,
+    const url = new URL(req.url)
+    const formatParam = url.searchParams.get('format') || 'csv'
+    const format = formatParam.toLowerCase().trim() as ExportFormat
+
+    if (!['csv', 'json', 'xlsx', 'pdf'].includes(format)) {
+      return new Response(JSON.stringify({
+        error: `Invalid format "${format}". Supported: csv, json, xlsx, pdf`
+      }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    const url = new URL(req.url)
-    const formatParam = url.searchParams.get('format') || 'csv'
-    const format = formatParam.toLowerCase().trim()
-
-    // Validate format
-    if (!['csv', 'json'].includes(format)) {
-      console.error('Invalid format received:', formatParam)
-      throw new Error(`Invalid format "${formatParam}". Use "csv" or "json"`)
-    }
-
-    console.log(`✅ Export format validated: ${format}`)
-
-    // Fetch all jobs for the user (no pagination for export)
     const { data: jobs, error } = await supabaseClient
       .from('jobs')
       .select('*')
@@ -178,27 +167,34 @@ serve(async (req) => {
       .order('date_applied', { ascending: false })
 
     if (error) throw error
-
     if (!jobs || jobs.length === 0) {
-      throw new Error('No jobs found to export')
+      return new Response(JSON.stringify({ message: 'No jobs found to export.' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
 
-    console.log(`📦 Exporting ${jobs.length} jobs as ${format.toUpperCase()}`)
-
-    let content: string
+    const timestamp = new Date().toISOString().split('T')[0]
+    let content: string | Uint8Array
     let contentType: string
     let filename: string
-
-    const timestamp = new Date().toISOString().split('T')[0]
 
     if (format === 'csv') {
       content = generateCSV(jobs)
       contentType = 'text/csv; charset=utf-8'
       filename = `job_applications_${timestamp}.csv`
-    } else {
+    } else if (format === 'json') {
       content = generateJSON(jobs)
       contentType = 'application/json; charset=utf-8'
       filename = `job_applications_${timestamp}.json`
+    } else if (format === 'xlsx') {
+      content = await generateXLSX(jobs)
+      contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      filename = `job_applications_${timestamp}.xlsx`
+    } else {
+      content = await generatePDF(jobs)
+      contentType = 'application/pdf'
+      filename = `job_applications_${timestamp}.pdf`
     }
 
     return new Response(content, {
@@ -206,23 +202,16 @@ serve(async (req) => {
         ...corsHeaders,
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': String(new TextEncoder().encode(content).length)
       }
     })
-
   } catch (error) {
-    console.error('Export Error:', error)
-
-    let status = 400
-    if (error.message === 'Unauthorized' || error.message.includes('authorization')) {
-      status = 401
-    }
-
+    console.error('❌ Export Error:', error)
+    const status = (error.message?.includes('auth')) ? 401 : 400
     return new Response(JSON.stringify({
-      error: error.message || 'An error occurred during export'
+      error: error.message || 'Export failed',
     }), {
       status,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' }
     })
   }
 })

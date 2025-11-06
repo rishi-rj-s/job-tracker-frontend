@@ -15,6 +15,7 @@ function getCorsHeaders(origin: string | null) {
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0],
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Max-Age': '86400',
   }
@@ -48,6 +49,7 @@ serve(async (req) => {
     if (!authHeader) {
       throw new Error('Missing authorization header')
     }
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -60,7 +62,6 @@ serve(async (req) => {
       }
     )
 
-    const authHeader = req.headers.get('authorization')
     const user = await getAuthenticatedUser(supabaseClient, authHeader)
 
     if (req.method !== 'GET') {
