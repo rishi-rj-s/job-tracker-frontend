@@ -43,13 +43,13 @@
         </div>
       </div>
 
-      <div class="mt-6">
+      <!-- <div class="mt-6">
         <GoogleButton
           text="Sign in with Google"
           :disabled="loading"
           @click="handleGoogleAuth"
         />
-      </div>
+      </div> -->
     </div>
 
     <div class="text-center text-sm">
