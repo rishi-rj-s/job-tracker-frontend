@@ -64,13 +64,13 @@
         </div>
       </div>
 
-      <div class="mt-3">
+      <!-- <div class="mt-3">
         <GoogleButton
           text="Sign up with Google"
           :disabled="loading"
           @click="handleGoogleAuthWithToast"
         />
-      </div>
+      </div> -->
     </div>
 
     <div class="text-center text-sm">
