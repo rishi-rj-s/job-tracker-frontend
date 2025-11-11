@@ -99,7 +99,7 @@ const { showToast } = useToast()
 const formData = ref<Job>({
   jobTitle: '',
   company: '',
-  dateApplied: '',
+  dateApplied: new Date().toISOString().split('T')[0] as string,
   jobLink: '',
   salary: '',
   location: '',
@@ -139,7 +139,7 @@ const handleSubmit = () => {
     formData.value = {
       jobTitle: '',
       company: '',
-      dateApplied: '',
+      dateApplied: new Date().toISOString().split('T')[0] as string,
       jobLink: '',
       salary: '',
       location: '',
