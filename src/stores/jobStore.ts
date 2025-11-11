@@ -22,7 +22,7 @@ export const useJobStore = defineStore('job', () => {
   const currentPage = ref(1)
   const totalPages = ref(1)
   const totalItems = ref(0)
-  const pageSize = 20
+  const pageSize = 10
   const isLoading = ref(false)
   const connectionStatus = ref<'loading' | 'success' | 'error'>('loading')
   const errorMessage = ref('')
