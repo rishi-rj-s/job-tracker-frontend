@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useJobStore } from './jobStore'
 import { useStatusStore } from './statusStore'
 import { usePlatformStore } from './platformStore'
+import { useStatsStore } from './statsStore'
 import { useToast } from '@/composables/useToast'
 
 export const useSyncStore = defineStore('sync', () => {
@@ -13,6 +14,7 @@ export const useSyncStore = defineStore('sync', () => {
     const jobStore = useJobStore()
     const statusStore = useStatusStore()
     const platformStore = usePlatformStore()
+    const statsStore = useStatsStore()
 
     // Calculate total pending INCLUDING DELETIONS
     const totalPending = 
@@ -62,7 +64,8 @@ export const useSyncStore = defineStore('sync', () => {
       await Promise.all([
         statusStore.fetchStatuses(),
         platformStore.fetchPlatforms(),
-        jobStore.fetchJobs(jobStore.currentPage)
+        jobStore.fetchJobs(jobStore.currentPage),
+        statsStore.fetchStats(true) 
       ])
 
     } catch (error: any) {

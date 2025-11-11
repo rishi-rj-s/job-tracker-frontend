@@ -111,11 +111,13 @@ import { Briefcase as BriefcaseIcon, TrendingUp, Calendar, Target, Plus, Downloa
 import { useAuthStore } from '@stores/authStore'
 import { useJobStore } from '@stores/jobStore'
 import { useStatusStore } from '@stores/statusStore'
+import { useStatsStore } from '@stores/statsStore'
 import { useToast } from '@composables/useToast'
 
 const authStore = useAuthStore()
 const jobStore = useJobStore()
 const statusStore = useStatusStore()
+const statsStore = useStatsStore()
 const { showToast } = useToast()
 
 const userName = computed(() => {
@@ -127,35 +129,33 @@ const recentJobs = computed(() => {
 })
 
 const stats = computed(() => {
-  const jobs = jobStore.jobs
-  
   return [
     {
       icon: BriefcaseIcon,
       bgColor: 'bg-blue-100',
       iconColor: 'text-blue-600',
-      value: jobs.length,
+      value: statsStore.totalJobs,
       label: 'Total Applications'
     },
     {
       icon: TrendingUp,
       bgColor: 'bg-green-100',
       iconColor: 'text-green-600',
-      value: jobs.filter(j => j.status === 'Interview').length,
+      value: statsStore.interviewCount,
       label: 'Interviews'
     },
     {
       icon: Calendar,
       bgColor: 'bg-yellow-100',
       iconColor: 'text-yellow-600',
-      value: jobs.filter(j => j.status === 'Screening').length,
+      value: statsStore.screeningCount,
       label: 'Screening'
     },
     {
       icon: Target,
       bgColor: 'bg-purple-100',
       iconColor: 'text-purple-600',
-      value: jobs.filter(j => j.status === 'Offer').length,
+      value: statsStore.offerCount,
       label: 'Offers'
     }
   ]
@@ -163,14 +163,14 @@ const stats = computed(() => {
 
 const getStatusClass = (key: string) => {
   const classes: Record<string, string> = {
-    'Applied': 'bg-blue-100 text-blue-700',
-    'Screening': 'bg-yellow-100 text-yellow-700',
-    'Interview': 'bg-green-100 text-green-700',
-    'Offer': 'bg-purple-100 text-purple-700',
-    'Rejected': 'bg-red-100 text-red-700',
-    'Closed': 'bg-gray-100 text-gray-700',
+    'applied': 'bg-blue-100 text-blue-700',
+    'screening': 'bg-yellow-100 text-yellow-700',
+    'interview': 'bg-green-100 text-green-700',
+    'offer': 'bg-purple-100 text-purple-700',
+    'rejected': 'bg-red-100 text-red-700',
+    'closed': 'bg-gray-100 text-gray-700',
   }
-  return classes[key] || 'bg-gray-100 text-gray-700'
+  return classes[key?.toLowerCase()] || 'bg-gray-100 text-gray-700'
 }
 
 const handleExport = async () => {
@@ -184,9 +184,17 @@ const handleExport = async () => {
 }
 
 onMounted(async () => {
+  // Load stats first (lightweight)
+  if (!statsStore.hasLoadedInitially) {
+    await statsStore.fetchStats()
+  }
+
+  // Then load jobs if needed (heavier)
   if (jobStore.jobs.length === 0) {
     await jobStore.fetchJobs()
   }
+
+  // Load statuses if needed
   if (Object.keys(statusStore.statuses).length <= 6) {
     await statusStore.fetchStatuses()
   }
