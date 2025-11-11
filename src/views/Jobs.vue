@@ -80,6 +80,7 @@ import { useJobStore } from '@stores/jobStore'
 import { useSyncStore } from '@stores/syncStore'
 import { useStatusStore } from '@stores/statusStore'
 import { usePlatformStore } from '@stores/platformStore'
+import { useStatsStore } from '@stores/statsStore'
 import JobForm from '@components/dashboard/jobs/JobForm.vue'
 import JobList from '@components/dashboard/jobs/JobList.vue'
 import EditModal from '@components/dashboard/jobs/EditModal.vue'
@@ -90,25 +91,28 @@ const jobStore = useJobStore()
 const syncStore = useSyncStore()
 const statusStore = useStatusStore()
 const platformStore = usePlatformStore()
+const statsStore = useStatsStore()
 
 const showForm = ref(false)
 const isInitialLoading = ref(false)
 
 const statusStats = computed(() => [
-  { label: 'Total', count: jobStore.jobs.length },
-  { label: 'Applied', count: jobStore.jobs.filter(j => j.status?.toLowerCase() === 'applied').length },
-  { label: 'Interview', count: jobStore.jobs.filter(j => j.status?.toLowerCase() === 'interview').length },
-  { label: 'Offers', count: jobStore.jobs.filter(j => j.status?.toLowerCase() === 'offer').length }
+  { label: 'Total', count: statsStore.totalJobs },
+  { label: 'Applied', count: statsStore.appliedCount },
+  { label: 'Interview', count: statsStore.interviewCount },
+  { label: 'Offers', count: statsStore.offerCount }
 ])
 
 const handleSync = async () => {
   await syncStore.syncAll()
+  // Refresh stats after sync
+  await statsStore.fetchStats(true)
 }
 
 // Function to load data only when necessary
 const loadData = async () => {
 
-  if (jobStore.hasLoadedInitially) {
+  if (jobStore.hasLoadedInitially && statsStore.hasLoadedInitially) {
     return
   }
 
@@ -117,7 +121,8 @@ const loadData = async () => {
   try {
     await Promise.all([
       statusStore.fetchStatuses(),
-      platformStore.fetchPlatforms()
+      platformStore.fetchPlatforms(),
+      statsStore.fetchStats() // Fetch stats separately
     ])
 
     await jobStore.fetchJobs(1)
