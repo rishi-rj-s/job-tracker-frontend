@@ -33,7 +33,7 @@
       </button>
     </div>
 
-    <div class="mt-6">
+    <!-- <div class="mt-6">
       <div class="relative">
         <div class="absolute inset-0 flex items-center">
           <div class="w-full border-t border-gray-600"></div>
@@ -43,14 +43,14 @@
         </div>
       </div>
 
-      <!-- <div class="mt-6">
+      <div class="mt-6">
         <GoogleButton
           text="Sign in with Google"
           :disabled="loading"
           @click="handleGoogleAuth"
         />
-      </div> -->
-    </div>
+      </div>
+    </div> -->
 
     <div class="text-center text-sm">
       <span class="text-gray-400">Don't have an account? </span>

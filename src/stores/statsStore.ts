@@ -71,7 +71,6 @@ export const useStatsStore = defineStore('stats', () => {
     }
   }
 
-  // Fetch statistics from backend
   async function fetchStats(forceRefresh = false) {
     // Skip if we have data and not forcing refresh
     if (!forceRefresh && hasLoadedInitially.value) {
@@ -115,7 +114,103 @@ export const useStatsStore = defineStore('stats', () => {
     }
   }
 
-  // Invalidate stats cache (call this after adding/updating/deleting jobs)
+  function incrementJobAdded(status: string, platforms: string[], dateApplied?: string) {
+    // Increment total
+    stats.value.total++
+    
+    // Increment status breakdown
+    const statusKey = status.toLowerCase()
+    stats.value.statusBreakdown[statusKey] = (stats.value.statusBreakdown[statusKey] || 0) + 1
+    
+    // Increment platform breakdown
+    platforms.forEach(platform => {
+      stats.value.platformBreakdown[platform] = (stats.value.platformBreakdown[platform] || 0) + 1
+    })
+    
+    // Update top platforms
+    updateTopPlatforms()
+    
+    // Check if added this week/month
+    if (dateApplied) {
+      const appliedDate = new Date(dateApplied)
+      const now = new Date()
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1)
+      
+      if (appliedDate >= weekAgo) {
+        stats.value.thisWeek++
+      }
+      if (appliedDate >= monthAgo) {
+        stats.value.thisMonth++
+      }
+    }
+  }
+
+  function decrementJobDeleted(status: string, platforms: string[], dateApplied?: string) {
+    // Decrement total
+    stats.value.total = Math.max(0, stats.value.total - 1)
+    
+    // Decrement status breakdown
+    const statusKey = status.toLowerCase()
+    stats.value.statusBreakdown[statusKey] = Math.max(0, (stats.value.statusBreakdown[statusKey] || 0) - 1)
+    
+    // Decrement platform breakdown
+    platforms.forEach(platform => {
+      stats.value.platformBreakdown[platform] = Math.max(0, (stats.value.platformBreakdown[platform] || 0) - 1)
+    })
+    
+    // Update top platforms
+    updateTopPlatforms()
+    
+    // Check if was added this week/month
+    if (dateApplied) {
+      const appliedDate = new Date(dateApplied)
+      const now = new Date()
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1)
+      
+      if (appliedDate >= weekAgo) {
+        stats.value.thisWeek = Math.max(0, stats.value.thisWeek - 1)
+      }
+      if (appliedDate >= monthAgo) {
+        stats.value.thisMonth = Math.max(0, stats.value.thisMonth - 1)
+      }
+    }
+  }
+
+  function updateJobStatus(oldStatus: string, newStatus: string) {
+    const oldKey = oldStatus.toLowerCase()
+    const newKey = newStatus.toLowerCase()
+    
+    // Decrement old status
+    stats.value.statusBreakdown[oldKey] = Math.max(0, (stats.value.statusBreakdown[oldKey] || 0) - 1)
+    
+    // Increment new status
+    stats.value.statusBreakdown[newKey] = (stats.value.statusBreakdown[newKey] || 0) + 1
+  }
+
+  function updateJobPlatforms(oldPlatforms: string[], newPlatforms: string[]) {
+    // Decrement old platforms
+    oldPlatforms.forEach(platform => {
+      stats.value.platformBreakdown[platform] = Math.max(0, (stats.value.platformBreakdown[platform] || 0) - 1)
+    })
+    
+    // Increment new platforms
+    newPlatforms.forEach(platform => {
+      stats.value.platformBreakdown[platform] = (stats.value.platformBreakdown[platform] || 0) + 1
+    })
+    
+    // Update top platforms
+    updateTopPlatforms()
+  }
+
+  function updateTopPlatforms() {
+    stats.value.topPlatforms = Object.entries(stats.value.platformBreakdown)
+      .map(([key, count]) => ({ key, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5) // Top 5 platforms
+  }
+
   function invalidateStats() {
     hasLoadedInitially.value = false
   }
@@ -134,6 +229,10 @@ export const useStatsStore = defineStore('stats', () => {
     getStatusCount,
     getPlatformCount,
     fetchStats,
+    incrementJobAdded,
+    decrementJobDeleted,
+    updateJobStatus,
+    updateJobPlatforms,
     invalidateStats
   }
 })

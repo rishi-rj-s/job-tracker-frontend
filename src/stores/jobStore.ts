@@ -4,6 +4,7 @@ import type { ExportFormat, Job } from '@type/index'
 import { supabase } from '@lib/supabase'
 import { useStatusStore } from './statusStore'
 import { usePlatformStore } from './platformStore'
+import { useStatsStore } from './statsStore'
 
 interface SearchParams {
   query?: string
@@ -26,14 +27,8 @@ export const useJobStore = defineStore('job', () => {
   const isLoading = ref(false)
   const connectionStatus = ref<'loading' | 'success' | 'error'>('loading')
   const errorMessage = ref('')
-
-  // NEW: Flag to track if initial load has completed
   const hasLoadedInitially = ref(false)
-
-  // Track active search params
   const activeSearchParams = ref<SearchParams | null>(null)
-
-  // Track only FAILED operations that need retry
   const pendingJobs = ref<Job[]>([])
   const pendingUpdates = ref<{ id: string; tempId: string; data: Partial<Job> }[]>([])
   const pendingDeletes = ref<{ id: string }[]>([])
@@ -84,13 +79,10 @@ export const useJobStore = defineStore('job', () => {
     return data
   }
 
-  // MODIFIED: Smart fetch that respects cache
   async function fetchJobs(page = 1, forceRefresh = false) {
-    // Skip if we have data and not forcing refresh
     if (!forceRefresh && hasLoadedInitially.value && jobs.value.length > 0 && page === currentPage.value) {
       return
     }
-
 
     isLoading.value = true
     connectionStatus.value = 'loading'
@@ -140,8 +132,6 @@ export const useJobStore = defineStore('job', () => {
 
       jobs.value = serverJobs
       connectionStatus.value = 'success'
-      
-      // Mark as loaded
       hasLoadedInitially.value = true
 
     } catch (err: any) {
@@ -243,7 +233,6 @@ export const useJobStore = defineStore('job', () => {
       delete postData._id
       delete postData.tempId
 
-
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/jobs`,
         {
@@ -262,6 +251,14 @@ export const useJobStore = defineStore('job', () => {
         jobs.value[jobIndex] = { ...data, isPending: false }
       }
 
+      // ✅ Optimistic stats update (no need to fetch from DB)
+      const statsStore = useStatsStore()
+      statsStore.incrementJobAdded(
+        job.status || 'applied',
+        job.applicationPlatforms || [],
+        job.dateApplied
+      )
+
     } catch (err) {
       pendingJobs.value.push(optimisticJob)
     }
@@ -274,6 +271,7 @@ export const useJobStore = defineStore('job', () => {
     const currentJob = jobs.value[jobIndex]
     if (!currentJob) return
 
+    const oldStatus = currentJob.status
     jobs.value[jobIndex] = { ...currentJob, ...data, isPending: true }
 
     const serverId = (currentJob._id || id) as string
@@ -283,7 +281,6 @@ export const useJobStore = defineStore('job', () => {
       try {
         const headers = await getAuthHeaders()
         const updateData = prepareJobDataForBackend({ id: serverId, ...data })
-
 
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/jobs`,
@@ -296,15 +293,28 @@ export const useJobStore = defineStore('job', () => {
 
         if (!response.ok) throw new Error('Failed to update job')
 
-
         if (jobs.value[jobIndex]) {
           jobs.value[jobIndex]!.isPending = false
         }
 
         pendingUpdates.value = pendingUpdates.value.filter(u => u.tempId !== tempId)
 
-      } catch (err) {
+        // ✅ Optimistic stats update (only if status changed)
+        if (data.status && data.status !== oldStatus) {
+          const statsStore = useStatsStore()
+          statsStore.updateJobStatus(oldStatus || 'applied', data.status)
+        }
 
+        // ✅ Optimistic platform update (if platforms changed)
+        if (data.applicationPlatforms && currentJob.applicationPlatforms) {
+          const statsStore = useStatsStore()
+          statsStore.updateJobPlatforms(
+            currentJob.applicationPlatforms,
+            data.applicationPlatforms
+          )
+        }
+
+      } catch (err) {
         const existingIndex = pendingUpdates.value.findIndex(u => u.tempId === tempId)
         if (existingIndex !== -1 && pendingUpdates.value[existingIndex]) {
           pendingUpdates.value[existingIndex]!.data = {
@@ -340,7 +350,6 @@ export const useJobStore = defineStore('job', () => {
       try {
         const headers = await getAuthHeaders()
 
-
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/jobs`,
           {
@@ -352,6 +361,13 @@ export const useJobStore = defineStore('job', () => {
 
         if (!response.ok) throw new Error('Failed to delete job')
 
+        // ✅ Optimistic stats update (no need to fetch from DB)
+        const statsStore = useStatsStore()
+        statsStore.decrementJobDeleted(
+          job.status || 'applied',
+          job.applicationPlatforms || [],
+          job.dateApplied
+        )
 
       } catch (err) {
         pendingDeletes.value.push({ id: serverId })
@@ -453,6 +469,12 @@ export const useJobStore = defineStore('job', () => {
     } else {
       await fetchJobs(currentPage.value, true)
     }
+
+    // ✅ Invalidate stats to force refresh from DB on next fetch
+    // (Only after sync, to ensure client and server are in sync)
+    const statsStore = useStatsStore()
+    statsStore.invalidateStats()
+    await statsStore.fetchStats(true) // Force one refresh after sync
   }
 
   async function exportJobs(format: ExportFormat) {

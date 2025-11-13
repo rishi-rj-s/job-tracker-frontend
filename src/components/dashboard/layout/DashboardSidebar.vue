@@ -25,7 +25,8 @@
           <span>Dashboard</span>
         </router-link>
 
-        <router-link to="/dashboard/jobs"
+        <!-- ✅ FIXED: Preserve query params using query store -->
+        <router-link :to="getJobsRoute"
           class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
           active-class="bg-indigo-600 text-white">
           <BriefcaseIcon class="h-5 w-5" />
@@ -95,6 +96,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   Briefcase,
   Home,
@@ -109,6 +111,7 @@ import {
 import { useAuthStore } from '@stores/authStore'
 import { useJobStore } from '@stores/jobStore'
 import { useSyncStore } from '@stores/syncStore'
+import { useQueryStore } from '@stores/queryStore'
 
 defineProps<{
   open: boolean
@@ -119,9 +122,11 @@ defineEmits<{
   'logout': []
 }>()
 
+const route = useRoute()
 const authStore = useAuthStore()
 const jobStore = useJobStore()
 const syncStore = useSyncStore()
+const queryStore = useQueryStore()
 
 const userInitials = computed(() => {
   const email = authStore.user?.email || ''
@@ -132,6 +137,28 @@ const userInitials = computed(() => {
   }
 
   return email.substring(0, 2).toUpperCase()
+})
+
+// ✅ NEW: Preserve query params using query store
+const getJobsRoute = computed(() => {
+  // Priority 1: If currently on jobs page with query, preserve it
+  if (route.name === 'jobs-applied' && Object.keys(route.query).length > 0) {
+    return {
+      path: '/dashboard/jobs',
+      query: route.query
+    }
+  }
+  
+  // Priority 2: If we have saved query in store, restore it
+  if (queryStore.hasJobsQuery()) {
+    return {
+      path: '/dashboard/jobs',
+      query: queryStore.lastJobsQuery
+    }
+  }
+  
+  // Priority 3: Fresh navigation without query
+  return '/dashboard/jobs'
 })
 
 const handleSync = async () => {
