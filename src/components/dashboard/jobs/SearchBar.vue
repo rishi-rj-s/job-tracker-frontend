@@ -8,7 +8,7 @@
           type="text"
           placeholder="Search by company name..."
           class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-          @input="debouncedSearch"
+          @input="handleDebouncedSearch"
           @keyup.enter="handleSearch"
         />
         <Search class="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
@@ -142,7 +142,7 @@
           <!-- Clear Filters Button -->
           <div class="flex items-end">
             <button
-              @click="clearFilters"
+              @click="handleClearAll"
               class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all"
             >
               Clear All Filters
@@ -156,37 +156,77 @@
     <div v-if="hasActiveFilters" class="mt-4 flex flex-wrap gap-2 items-center">
       <span class="text-sm text-gray-600 font-medium">Active filters:</span>
       
-      <span v-if="searchParams.query" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+      <!-- Company Filter Tag -->
+      <span 
+        v-if="searchParams.query" 
+        class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+      >
         Company: "{{ searchParams.query }}"
-        <button @click="searchParams.query = ''; handleSearch()" class="hover:text-blue-900">
+        <button 
+          @click="handleClearFilter('query')"
+          class="hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
+          aria-label="Clear company filter"
+        >
           <X class="h-3 w-3" />
         </button>
       </span>
       
-      <span v-if="searchParams.status" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+      <!-- Status Filter Tag -->
+      <span 
+        v-if="searchParams.status" 
+        class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+      >
         Status: {{ getStatusName(searchParams.status) }}
-        <button @click="searchParams.status = ''; handleSearch()" class="hover:text-blue-900">
+        <button 
+          @click="handleClearFilter('status')"
+          class="hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
+          aria-label="Clear status filter"
+        >
           <X class="h-3 w-3" />
         </button>
       </span>
       
-      <span v-if="searchParams.platform" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+      <!-- Platform Filter Tag -->
+      <span 
+        v-if="searchParams.platform" 
+        class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+      >
         Platform: {{ getPlatformName(searchParams.platform) }}
-        <button @click="searchParams.platform = ''; handleSearch()" class="hover:text-blue-900">
+        <button 
+          @click="handleClearFilter('platform')"
+          class="hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
+          aria-label="Clear platform filter"
+        >
           <X class="h-3 w-3" />
         </button>
       </span>
       
-      <span v-if="searchParams.dateFrom" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-        From: {{ searchParams.dateFrom }}
-        <button @click="searchParams.dateFrom = ''; handleSearch()" class="hover:text-blue-900">
+      <!-- Date From Filter Tag -->
+      <span 
+        v-if="searchParams.dateFrom" 
+        class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+      >
+        From: {{ formatDate(searchParams.dateFrom) }}
+        <button 
+          @click="handleClearFilter('dateFrom')"
+          class="hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
+          aria-label="Clear date from filter"
+        >
           <X class="h-3 w-3" />
         </button>
       </span>
       
-      <span v-if="searchParams.dateTo" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-        To: {{ searchParams.dateTo }}
-        <button @click="searchParams.dateTo = ''; handleSearch()" class="hover:text-blue-900">
+      <!-- Date To Filter Tag -->
+      <span 
+        v-if="searchParams.dateTo" 
+        class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+      >
+        To: {{ formatDate(searchParams.dateTo) }}
+        <button 
+          @click="handleClearFilter('dateTo')"
+          class="hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
+          aria-label="Clear date to filter"
+        >
           <X class="h-3 w-3" />
         </button>
       </span>
@@ -195,30 +235,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Search, X, SlidersHorizontal, ChevronDown } from 'lucide-vue-next'
-import { useJobStore } from '@/stores/jobStore'
 import { useStatusStore } from '@/stores/statusStore'
 import { usePlatformStore } from '@/stores/platformStore'
+import { useQueryStore } from '@/stores/queryStore'
+import { useSearchState } from '@/composables/useSearchState'
+import { createDebounce } from '@/utils/searchHelpers'
 
-const jobStore = useJobStore()
+const route = useRoute()
 const statusStore = useStatusStore()
 const platformStore = usePlatformStore()
+const queryStore = useQueryStore()
 
-const isSearching = ref(false)
+// Use search state composable
+const {
+  searchParams,
+  isSearching,
+  hasActiveFilters,
+  executeSearch,
+  clearFilter,
+  clearAllFilters,
+  initializeFromUrl,
+  watchUrlChanges
+} = useSearchState()
+
 const showAdvanced = ref(false)
+const debounce = createDebounce()
 
-const searchParams = ref({
-  query: '',
-  status: '',
-  platform: '',
-  dateFrom: '',
-  dateTo: '',
-  sortBy: 'date_applied',
-  sortOrder: 'desc'
-})
-
-// Get all statuses (default + user custom)
+// Computed properties for dropdowns
 const allStatuses = computed(() => {
   return Object.entries(statusStore.statuses).map(([key, name]) => ({
     key,
@@ -226,7 +272,6 @@ const allStatuses = computed(() => {
   }))
 })
 
-// Get all platforms (default + user custom)
 const allPlatforms = computed(() => {
   return Object.entries(platformStore.platforms).map(([key, name]) => ({
     key,
@@ -234,16 +279,7 @@ const allPlatforms = computed(() => {
   }))
 })
 
-const hasActiveFilters = computed(() => {
-  return !!(
-    searchParams.value.query ||
-    searchParams.value.status ||
-    searchParams.value.platform ||
-    searchParams.value.dateFrom ||
-    searchParams.value.dateTo
-  )
-})
-
+// Helper functions for filter tags
 const getStatusName = (key: string) => {
   return statusStore.statuses[key] || key
 }
@@ -252,53 +288,73 @@ const getPlatformName = (key: string) => {
   return platformStore.platforms[key] || key
 }
 
-let debounceTimeout: ReturnType<typeof setTimeout>
-
-const debouncedSearch = () => {
-  clearTimeout(debounceTimeout)
-  debounceTimeout = setTimeout(() => {
-    handleSearch()
-  }, 800) // Wait 800ms after user stops typing
-}
-
-const handleSearch = async () => {
-  // If no search query and no filters, fetch normally instead
-  if (!hasActiveFilters.value) {
-    await jobStore.fetchJobs(1)
-    return
-  }
-
-  isSearching.value = true
+const formatDate = (dateStr: string) => {
   try {
-    await jobStore.searchJobs(searchParams.value)
-  } finally {
-    isSearching.value = false
+    return new Date(dateStr).toLocaleDateString()
+  } catch {
+    return dateStr
   }
 }
 
-const clearFilters = async () => {
-  searchParams.value = {
-    query: '',
-    status: '',
-    platform: '',
-    dateFrom: '',
-    dateTo: '',
-    sortBy: 'date_applied',
-    sortOrder: 'desc'
-  }
+// Event handlers
+const handleSearch = async () => {
+  await executeSearch()
+}
+
+const handleDebouncedSearch = () => {
+  debounce(() => handleSearch(), 800)
+}
+
+const handleClearFilter = async (filterName: string) => {
+  await clearFilter(filterName as any)
+}
+
+const handleClearAll = async () => {
   showAdvanced.value = false
-  // Fetch normally when all filters cleared
-  await jobStore.fetchJobs(1)
+  queryStore.clearJobsQuery() // ✅ Clear from store
+  await clearAllFilters()
 }
 
-onMounted(() => {
+// Auto-expand advanced section if filters are active
+const checkAdvancedExpansion = () => {
+  if (searchParams.value.status || searchParams.value.platform || 
+      searchParams.value.dateFrom || searchParams.value.dateTo) {
+    showAdvanced.value = true
+  }
+}
+
+// ✅ Watch route query and save to store
+watch(() => route.query, (newQuery) => {
+  if (Object.keys(newQuery).length > 0) {
+    queryStore.saveJobsQuery(newQuery as Record<string, string>)
+  } else {
+    queryStore.clearJobsQuery()
+  }
+}, { deep: true, immediate: true })
+
+// Lifecycle hooks
+onMounted(async () => {
   // Ensure statuses and platforms are loaded
   if (Object.keys(statusStore.statuses).length === 0) {
-    statusStore.fetchStatuses()
+    await statusStore.fetchStatuses()
   }
   if (Object.keys(platformStore.platforms).length === 0) {
-    platformStore.fetchPlatforms()
+    await platformStore.fetchPlatforms()
   }
+  
+  // Initialize search state from URL
+  await initializeFromUrl()
+  
+  // ✅ Save initial query to store
+  if (hasActiveFilters.value) {
+    queryStore.saveJobsQuery(route.query as Record<string, string>)
+  }
+  
+  // Check if advanced section should be expanded
+  checkAdvancedExpansion()
+  
+  // Watch for URL changes
+  watchUrlChanges()
 })
 </script>
 

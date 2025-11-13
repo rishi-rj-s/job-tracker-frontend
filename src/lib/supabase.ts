@@ -26,7 +26,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    storage: window.sessionStorage,
+    storage: window.localStorage,
     storageKey: 'applylog-auth',
   },
   global: {
