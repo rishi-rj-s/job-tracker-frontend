@@ -6,7 +6,8 @@ const allowedOrigins = [
   'http://localhost:5173', // Development
   'http://localhost:4173',  // Alternative dev port
   // Add your production domain here when deploying:
-  'https://apply-log-henna.vercel.app'
+  'https://apply-log.site',
+  'https://www.apply-log.site'
 ]
 
 function getCorsHeaders(origin: string | null) {

@@ -4,7 +4,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:4173',
-  'https://apply-log-henna.vercel.app'
+  'https://apply-log.site',
+  'https://www.apply-log.site'
 ]
 
 function getCorsHeaders(origin: string | null) {
