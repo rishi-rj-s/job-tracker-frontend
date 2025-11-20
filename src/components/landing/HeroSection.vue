@@ -1,170 +1,173 @@
 <template>
-  <section class="hero">
-    <div class="container">
-      <div class="content">
-        <h1 class="title">
-          Log Your Job Applications
-        </h1>
-        <p class="subtitle">
-          Stop using spreadsheets. Record every application you send in one simple form. Free forever.
-        </p>
-        
-        <div class="actions">
-          <button @click="$router.push('/signup')" class="btn-primary">
-            Get Started
-          </button>
-          <button @click="scrollToFeatures" class="btn-secondary">
-            See How It Works
-          </button>
+  <section class="min-h-screen pt-[120px] pb-20 px-8 relative overflow-hidden">
+    <div class="max-w-7xl mx-auto relative z-10">
+      <!-- Main Content -->
+      <div class="text-center max-w-[800px] mx-auto mb-20">
+        <div class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full mb-8 animate-fade-in-up">
+          <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></span>
+          <span class="text-sm text-white/90 font-medium tracking-tight">Your Job Search Command Center</span>
         </div>
+        
+        <h1 class="text-6xl font-bold text-white mb-6 leading-[1.1] tracking-tight animate-fade-in-up animation-delay-100">
+          Track Every Application.<br />
+          <span class="bg-linear-to-r from-indigo-500 via-purple-600 to-pink-500 bg-clip-text text-transparent">Never Miss a Follow-up.</span>
+        </h1>
+        
+        <p class="text-xl text-white/60 leading-relaxed mb-10 max-w-[650px] mx-auto animate-fade-in-up animation-delay-200">
+          Log job applications, manage follow-up dates, store HR contacts, and track your progress—all in one beautiful interface. Built for serious job seekers.
+        </p>
 
-        <div class="features-list">
-          <div class="feature-item">
-            <Check class="icon" />
-            <span>Always Free</span>
+        <div class="flex flex-col items-center gap-4 animate-fade-in-up animation-delay-300">
+          <button 
+            @click="$router.push('/signup')" 
+            class="inline-flex items-center gap-2 px-8 py-4 bg-linear-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-[17px] font-semibold tracking-tight shadow-[0_8px_32px_rgba(99,102,241,0.4)] transition-all hover:shadow-[0_12px_40px_rgba(99,102,241,0.5)] hover:-translate-y-0.5 group"
+          >
+            Start Tracking Free
+            <ArrowRight class="w-5 h-5 transition-transform group-hover:translate-x-1" />
+          </button>
+          <div class="flex items-center gap-1.5 text-white/50 text-sm">
+            <Check class="w-4 h-4 text-emerald-500" />
+            <span>No credit card required</span>
           </div>
-          <div class="feature-item">
-            <Check class="icon" />
-            <span>Your Data, Your Control</span>
+        </div>
+      </div>
+
+      <!-- Feature Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+        <div 
+          v-for="(feature, index) in features" 
+          :key="index"
+          class="bg-white/2 border border-white/6 rounded-2xl p-8 transition-all duration-300 hover:bg-white/4 hover:border-indigo-500/30 hover:-translate-y-1 animate-fade-in-up"
+          :style="{ animationDelay: `${0.4 + index * 0.1}s` }"
+        >
+          <div class="w-12 h-12 bg-linear-to-br from-indigo-500/20 to-purple-600/20 border border-indigo-500/30 rounded-xl flex items-center justify-center mb-5">
+            <component :is="feature.icon" class="w-6 h-6 text-purple-600" />
+          </div>
+          <h3 class="text-lg font-semibold text-white mb-3 tracking-tight">{{ feature.title }}</h3>
+          <p class="text-[15px] text-white/50 leading-relaxed">{{ feature.description }}</p>
+        </div>
+      </div>
+
+      <!-- Bottom Section -->
+      <div class="text-center animate-fade-in-up animation-delay-700">
+        <div class="flex justify-center gap-16 p-8 bg-white/2 border border-white/6 rounded-2xl max-w-[600px] mx-auto">
+          <div 
+            v-for="(stat, index) in stats" 
+            :key="index"
+            class="text-center"
+          >
+            <div class="text-3xl font-bold text-white mb-2 tracking-tight">{{ stat.value }}</div>
+            <div class="text-sm text-white/50 uppercase tracking-wider">{{ stat.label }}</div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Decorative Elements -->
+    <div class="absolute w-[600px] h-[600px] rounded-full blur-[80px] opacity-40 pointer-events-none top-[-200px] left-[-200px] bg-[radial-gradient(circle,rgba(99,102,241,0.4)_0%,transparent_70%)]"></div>
+    <div class="absolute w-[500px] h-[500px] rounded-full blur-[80px] opacity-40 pointer-events-none bottom-[-100px] right-[-100px] bg-[radial-gradient(circle,rgba(139,92,246,0.3)_0%,transparent_70%)]"></div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { Check } from 'lucide-vue-next'
+import { ArrowRight, Check, Calendar, Users, TrendingUp, FileText } from 'lucide-vue-next'
 
-const scrollToFeatures = () => {
-  const element = document.querySelector('.features-section')
-  element?.scrollIntoView({ behavior: 'smooth' })
-}
+const features = [
+  {
+    icon: FileText,
+    title: 'Application Logging',
+    description: 'Quick form to capture company, role, salary, platform, and status for every application you send.'
+  },
+  {
+    icon: Calendar,
+    title: 'Follow-up Calendar',
+    description: 'Mark next follow-up dates and see them all in one calendar view. Never forget to check back.'
+  },
+  {
+    icon: Users,
+    title: 'HR Contacts',
+    description: 'Store recruiter names, companies, and phone numbers. Tap to dial directly from your phone.'
+  },
+  {
+    icon: TrendingUp,
+    title: 'Analytics',
+    description: 'Visualize your job search progress, success rates, and trends to optimize your strategy.'
+  }
+]
+
+const stats = [
+  { value: 'Free', label: 'Forever' },
+  { value: '100%', label: 'Private' },
+  { value: 'Unlimited', label: 'Applications' }
+]
 </script>
 
 <style scoped>
-.hero {
-  min-height: calc(100vh - 70px); /* Full viewport minus navbar */
-  display: flex;
-  align-items: center;
-  padding: 60px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out both;
 }
 
-.content {
-  text-align: center;
-  max-width: 700px;
-  margin: 0 auto;
+.animation-delay-100 {
+  animation-delay: 0.1s;
 }
 
-.title {
-  font-size: 3rem;
-  font-weight: 700;
-  margin-bottom: 20px;
-  line-height: 1.2;
+.animation-delay-200 {
+  animation-delay: 0.2s;
 }
 
-.subtitle {
-  font-size: 1.25rem;
-  margin-bottom: 40px;
-  opacity: 0.95;
-  line-height: 1.6;
+.animation-delay-300 {
+  animation-delay: 0.3s;
 }
 
-.actions {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  margin-bottom: 40px;
-  flex-wrap: wrap;
+.animation-delay-700 {
+  animation-delay: 0.7s;
 }
 
-.btn-primary {
-  padding: 14px 32px;
-  background: white;
-  color: #667eea;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn-secondary {
-  padding: 14px 32px;
-  background: transparent;
-  color: white;
-  border: 2px solid white;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-.btn-secondary:hover {
-  background: white;
-  color: #667eea;
-}
-
-.features-list {
-  display: flex;
-  gap: 24px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.95rem;
-}
-
-.icon {
-  width: 20px;
-  height: 20px;
-  color: #a3f3c4;
+@media (max-width: 1024px) {
+  h1 {
+    font-size: 3rem;
+  }
 }
 
 @media (max-width: 768px) {
-  .hero {
-    min-height: calc(100vh - 60px); /* Account for smaller mobile navbar */
-    padding: 40px 20px;
+  section {
+    padding-top: 100px;
+    padding-bottom: 60px;
+    padding-left: 20px;
+    padding-right: 20px;
   }
 
-  .title {
-    font-size: 2rem;
+  h1 {
+    font-size: 2.25rem;
   }
 
-  .subtitle {
-    font-size: 1.1rem;
+  p {
+    font-size: 1.0625rem;
   }
 
-  .actions {
-    flex-direction: column;
-  }
-
-  .btn-primary,
-  .btn-secondary {
+  button {
     width: 100%;
+    justify-content: center;
   }
 
-  .features-list {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .flex.gap-16 {
     flex-direction: column;
-    align-items: center;
+    gap: 2rem;
   }
 }
 </style>
