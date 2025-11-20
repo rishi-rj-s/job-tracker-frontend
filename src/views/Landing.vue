@@ -19,7 +19,7 @@ useSEO({
   title: 'ApplyLog - Track Your Job Applications',
   description: 'Keep track of every job application, follow-up date, and HR contact in one beautiful interface.',
   keywords: 'job application tracker, job search organizer, application manager, career tools',
-  url: 'https://localhost:5713',
+  url: 'https://www.apply-log.site/',
   type: 'website'
 })
 </script>
