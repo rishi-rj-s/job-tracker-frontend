@@ -1,10 +1,10 @@
 <template>
-  <div class="landing-page">
+  <div class="min-h-screen bg-[#0a0a0a] relative overflow-hidden">
     <Navbar />
-    <HeroSection />
-    <FeaturesSection />
-    <HowItWorksSection />
-    <CTASection />
+    <main class="relative z-10">
+      <HeroSection />
+      <div class="fixed inset-0 z-0 pointer-events-none bg-[radial-gradient(circle_at_20%_50%,rgba(120,119,198,0.15)_0%,transparent_50%),radial-gradient(circle_at_80%_80%,rgba(99,102,241,0.15)_0%,transparent_50%)]"></div>
+    </main>
     <FooterSection />
   </div>
 </template>
@@ -13,30 +13,13 @@
 import { useSEO } from '@/composables/useSEO'
 import Navbar from '@/components/landing/Navbar.vue'
 import HeroSection from '@/components/landing/HeroSection.vue'
-import FeaturesSection from '@/components/landing/FeaturesSection.vue'
-import HowItWorksSection from '@/components/landing/HowItWorksSection.vue'
-import CTASection from '@/components/landing/CTASection.vue'
 import FooterSection from '@/components/landing/FooterSection.vue'
 
-// Add SEO meta tags
 useSEO({
-  title: 'ApplyLog - Track Your Job Applications Like a Pro',
-  description: 'Organize and track all your job applications in one place. Never miss a follow-up or lose track of an opportunity again. Free job application tracker.',
-  keywords: 'job application tracker, job search organizer, application manager, career tools, job hunting, apply log',
+  title: 'ApplyLog - Track Your Job Applications',
+  description: 'Keep track of every job application, follow-up date, and HR contact in one beautiful interface.',
+  keywords: 'job application tracker, job search organizer, application manager, career tools',
   url: 'https://localhost:5713',
   type: 'website'
 })
 </script>
-
-<style scoped>
-.landing-page {
-  background: #111827;
-  padding-top: 70px; /* Height of navbar */
-}
-
-@media (max-width: 768px) {
-  .landing-page {
-    padding-top: 60px; /* Mobile navbar height */
-  }
-}
-</style>
