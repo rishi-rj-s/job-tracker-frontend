@@ -15,7 +15,7 @@
     "lucide-vue-next": "^0.548.0",
     "nprogress": "^0.2.0",
     "pinia": "^3.0.3",
-    "tagtics-client": "^1.2.7",
+    "tagtics-client": "^1.3.2",
     "tailwindcss": "^4.1.16",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3"
