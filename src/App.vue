@@ -11,8 +11,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
+import Tagtics from 'tagtics-client'
 
 const authStore = useAuthStore()
 const authLoading = ref(true)
@@ -22,9 +23,17 @@ onMounted(async () => {
     await authStore.initialize()
   } catch (error) {
   } finally {
+    Tagtics.init({
+      apiKey: 'YOUR_API_KEY',
+      includePaths: ['/dashboard.*'],
+      serializeChildDepth: 1
+    });
     authLoading.value = false
   }
 })
+onUnmounted(() => {
+  Tagtics.destroy();
+});
 </script>
 
 <style>

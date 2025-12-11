@@ -26,6 +26,9 @@ importers:
       pinia:
         specifier: ^3.0.3
         version: 3.0.3(typescript@5.9.3)(vue@3.5.22(typescript@5.9.3))
+      tagtics-client:
+        specifier: ^1.2.7
+        version: 1.2.7
       tailwindcss:
         specifier: ^4.1.16
         version: 4.1.16
@@ -962,6 +965,9 @@ packages:
     resolution: {integrity: sha512-ay3d+LW/S6yppKoTz3Bq4mG0xrS5bFwfWEBmQfbC7lt5wmtk+Obq0TxVuA9eYRirBTQb1K3eEpBRHMQEo0WyVw==}
     engines: {node: '>=16'}
 
+  tagtics-client@1.2.7:
+    resolution: {integrity: sha512-2l1zSdI5U+puabfOVWt/E7WMCU4mU85zYrmudeywomFhxof2YDZGw36P1wGxJtT+yvCcTQ42wvqwJPIV96xU+Q==}
+
   tailwindcss@4.1.16:
     resolution: {integrity: sha512-pONL5awpaQX4LN5eiv7moSiSPd/DLDzKVRJz8Q9PgzmAdd1R4307GQS2ZpfiN7ZmekdQrfhZZiSE5jkLR4WNaA==}
 
@@ -1892,6 +1898,8 @@ snapshots:
   superjson@2.2.3:
     dependencies:
       copy-anything: 4.0.5
+
+  tagtics-client@1.2.7: {}
 
   tailwindcss@4.1.16: {}
 
